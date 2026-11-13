@@ -1,0 +1,8 @@
+name: spatialtip
+channels:
+  - conda-forge
+dependencies:
+  - python=3.11
+  - pip
+# Then install the appropriate PyTorch wheels and requirements.txt as in README.
+# R/mclust is optional and only needed for clustering.py.

@@ -1,0 +1,50 @@
+# Local environments, caches and editors
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ipynb_checkpoints/
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+
+# Credentials and personal configuration
+.env
+.env.*
+auth.json
+*.key
+*.pem
+.codex/
+AGENTS.md
+
+# Downloaded data, generated outputs and licensed/large model weights
+data/
+hest_data/
+resources/
+checkpoints/
+uni/
+runs/
+outputs/
+results/
+Result/
+Metrices/
+*.h5ad
+*.h5
+*.pt
+*.pth
+*.ckpt
+*.safetensors
+*.bin
+*.npz
+*.log
+
+# Research workspace material excluded from this source release
+experiments/
+baselines/
+baseline_extensions/
+ablation*/
+letter/
+tmp/

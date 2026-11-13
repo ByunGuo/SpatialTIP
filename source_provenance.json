@@ -1,0 +1,286 @@
+{
+  "schema_version": 1,
+  "prepared_on": "2026-11-04",
+  "release_status": "Prepared locally; not uploaded or pushed.",
+  "upstream": {
+    "repository": "https://github.com/Yoyiming/SpatialTIP",
+    "branch": "master",
+    "commit": "d2d076f0f2aa5195df926bbf916b83976a22d529",
+    "license": "Apache-2.0"
+  },
+  "research_source_files": [
+    {
+      "relative_path": "stGPT_con_e1.py",
+      "sha256": "48e909ae61253768e077f13b10959dbce6da65d6ecf92eb64f8fb201910484db"
+    },
+    {
+      "relative_path": "stGPT_model_con.py",
+      "sha256": "80a579532a236506fd3ad219f90ffb71239b450218b170e55203000ad894f3af"
+    },
+    {
+      "relative_path": "stGPT_init_con.py",
+      "sha256": "943060d9b654d8969b33a1b84d025413dca3b58c4ad660fbe3897f0fd2f29a3f"
+    },
+    {
+      "relative_path": "dataset_e1.py",
+      "sha256": "2bfc8716c56f1863285b2ac1f3eb1e35e51859211e7d16a09528de9abadf6c1c"
+    },
+    {
+      "relative_path": "utils.py",
+      "sha256": "0bc89a5a091cd3d270d6ede03694de13986e4a49656cf9a85ee4f233f52d1af0"
+    },
+    {
+      "relative_path": "finetune.py",
+      "sha256": "ac0a1ca788505994f1aaad2ed7a779edb5f3fb83f47ab196179fb4f02aea1f13"
+    },
+    {
+      "relative_path": "impute_evaluate_e1.py",
+      "sha256": "b763e310b8e0c9b26ab7bdf806c488789d2f7dbee182be6c2c554ddcb4b49e5e"
+    },
+    {
+      "relative_path": "evaluate.py",
+      "sha256": "265c039dc44e3e472407cddf11263f59e37a03ecbbb586de75e2a20e816555fd"
+    },
+    {
+      "relative_path": "preprocess_hest_healthy.py",
+      "sha256": "fd754fb595d3a673314493773a137d17be50f4c55ee1baf7af556e9a5bdc451d"
+    },
+    {
+      "relative_path": "preprocess_hest_cancer.py",
+      "sha256": "6936d3e455089c23b9b84ef735871dd3cc3c785f8f25ac29e567a75bc866be77"
+    },
+    {
+      "relative_path": "output_attentions.py",
+      "sha256": "8cef6eff510e6fdc57b9ca9ee4c06c34a50e0c04d30066f56794787749d13857"
+    },
+    {
+      "relative_path": "attention_analysis.py",
+      "sha256": "a163a5021f7a04ca62e12bb395778cac4a183b3558869eeb65956abd32f65c14"
+    }
+  ],
+  "core_mapping": {
+    "spatialtip.py": "stGPT_con_e1.py (same parameter structure; external heldout loss exclusion)",
+    "spatialtip_model.py": "stGPT_model_con.py (legacy stGPT parameter namespace retained)",
+    "spatialtip_init.py": "stGPT_init_con.py (unused external model-loader dependency removed)",
+    "dataset.py": "Generalized barcode-aligned dataset adapter",
+    "train.py": "Shared parameterized training engine; independent periodic learning-rate formula",
+    "impute.py": "Parameterized complete prediction export; explicit input-mask modes",
+    "evaluate.py": "Generalized heldout recovery metrics; no experiment orchestration",
+    "clustering.py": "Explicit completion, sequential spatial integration, PCA/mclust and label refinement"
+  },
+  "retained_method_details": [
+    "UNI ViT-L architecture, first 18 blocks frozen and final 6 trainable",
+    "Six-layer gene decoder defaults and unchanged legacy parameter names/shapes",
+    "Separate zero/nonzero training MLM; external heldout targets excluded",
+    "Full batch-by-gene mean reconstruction loss and contrastive coefficient 0.5",
+    "Original cross-rank gather convention without remote-rank gradients",
+    "Pretraining 90:10 and target fine-tuning 80:20 spot splits",
+    "Warmup/cosine restarts: pretraining cycle40/warmup5, fine-tuning cycle30/warmup2, minimum LR0.00005 and peak decay0.98",
+    "Original nonzeros retained before spatial expression integration; refine30 available"
+  ],
+  "explicit_release_changes": [
+    "No embedded credentials, import-time downloads, fixed workstation paths or fixed CUDA ordinal",
+    "Core public module names unified; old module./spatialtip. checkpoint prefixes normalized with strict tensor loading",
+    "Default inference zeros->mask; legacy nonzero-hiding remains an explicit input-mask option",
+    "Inference without labels omits the CLS prediction",
+    "Optional FlashAttention and SDPA fallback; explicit attention scores calculated in float32 to preserve precision under autocast",
+    "Deterministic NEW vocabulary fitting; frozen vocabulary IDs preserved during transform",
+    "Full batches, fixed validation RNG, output protection, new checkpoint vocabulary hash and configuration metadata",
+    "Deterministic spot-index rule for exact spatial-distance ties; no bitwise historical tie guarantee"
+  ],
+  "validation": {
+    "environment": {
+      "os": "Windows",
+      "python": "3.11.18",
+      "torch": "2.4.1+cpu",
+      "torchvision": "0.19.1+cpu",
+      "scanpy": "1.10.2",
+      "anndata": "0.10.9",
+      "h5py": "3.11.0",
+      "numpy": "1.26.4",
+      "R": "4.4.2",
+      "mclust": "6.1.1"
+    },
+    "passed": [
+      "AST parsing of all 16 Python modules; all CLI/subcommand help",
+      "Imports with network sockets blocked and no project output side effects",
+      "Real dense/sparse counts preprocessing with Seurat-v3; fixed mapping hashes; OOV library normalization error <=4.44e-16",
+      "Real H5AD/HDF5 barcode alignment, heldout contract, resizing and two Windows data-loader workers",
+      "Full real R/mclust clustering CLI with and without reference labels, PCA/smoothing/refine30 and H5AD output",
+      "Small original/release gene decoders: 92 state keys/shapes identical, explicit-math predictions/loss/attention agree; finite backward",
+      "SDPA decoder comparison max absolute prediction difference 1.4551915228366852e-10 in the small CPU check",
+      "Real model wrapper with a small substitute vision encoder: single-process contrastive backward and attention export",
+      "Synthetic strict checkpoints, legacy decoder/DDP prefixes, wrong vocabulary hash rejection",
+      "Small substitute-model training fixtures: stage-specific single-process and two-rank Gloo execution",
+      "Independent scheduler formula versus legacy reference for 80 epochs: max absolute LR difference 1.3552527156068805e-20, including zero-warmup boundary",
+      "CPU fp16/bfloat16 explicit attention scores/context equal float32 reference and finite backward; not a GPU check",
+      "Uniform heldout creation, known RMSE/MAE0.5, independent cosine calculation, axis alignment, invalid masks and output protection",
+      "Association ranking excludes diagonal entries and preserves scores",
+      "Negative expression, tissue-ID range and configured gene-panel length rejected",
+      "Credential/private-key pattern scan; no bundled large data, weights or bytecode"
+    ],
+    "not_validated": [
+      "Full UNI weights or full historical SpatialTIP checkpoints with their original vocabularies/tissue maps",
+      "Full-size or multi-GPU model training",
+      "Paper-result reproduction or new scientific performance experiments",
+      "Real HEST network download; only its CLI/API arguments were checked"
+    ]
+  },
+  "omitted": [
+    "Supplementary experiment runners, baseline extensions, ablation and sensitivity scripts",
+    "Manuscripts, reviewer materials, plots, logs, temporary scripts and test fixtures",
+    "Datasets, generated results, model weights and unverified vocabulary/tissue mappings",
+    "Unused scBERT/scFoundation source distributions and private authentication material"
+  ],
+  "resource_status": "Current research data/UNI/checkpoint links refer to an unavailable external drive; no old public vocabulary was substituted.",
+  "release_files": [
+    {
+      "relative_path": ".gitattributes",
+      "bytes": 119,
+      "sha256": "ad87dc4443626559de97d6ac20d01c18b1266e3f503ccb15a06beb381ea10eaa"
+    },
+    {
+      "relative_path": ".gitignore",
+      "bytes": 610,
+      "sha256": "562cd7a74da14e875251ca95a8910094f4dd32d5109b08d0429e6c75c0feb6c9"
+    },
+    {
+      "relative_path": "attention_network.py",
+      "bytes": 2348,
+      "sha256": "2cc5ce419e2574e7c8419e38c0b724f579b3b3cc38e4606d2132bd0c3bca4fb5"
+    },
+    {
+      "relative_path": "CHANGES_FROM_INITIAL.md",
+      "bytes": 17543,
+      "sha256": "6446578b7b084077f2808245c36f6f9c15d961386b337267efe7defbd67ed4c6"
+    },
+    {
+      "relative_path": "clustering.py",
+      "bytes": 11975,
+      "sha256": "624b0922d2f20a825de87fe15d6f09d11de6da1f2b8b7d0e567bd81d292370a1"
+    },
+    {
+      "relative_path": "configs/model.example.json",
+      "bytes": 287,
+      "sha256": "51477d4a42497a5371772f7dedb25351c898b52d85878cfb5b46c1bbedd7c31a"
+    },
+    {
+      "relative_path": "dataset.py",
+      "bytes": 6480,
+      "sha256": "8ba7501c73ccc4d461978e7ae8da751f1f9da28909cd792fe06cc957f615ff6b"
+    },
+    {
+      "relative_path": "environment.yml",
+      "bytes": 220,
+      "sha256": "33c7f0d6c558d236ba89b2ce83b5d89a75e8f8c10e6ff95b12a8bfc82597c5ac"
+    },
+    {
+      "relative_path": "evaluate.py",
+      "bytes": 7294,
+      "sha256": "a2539dc4bedd996c2835a46e1c597aabb899b6865e17035d899a13c940c97abf"
+    },
+    {
+      "relative_path": "examples/target_samples.csv",
+      "bytes": 99,
+      "sha256": "a51df8ff33ad46a284cb05dbe5f216813467ad42217f109af687bd30bf6a07c4"
+    },
+    {
+      "relative_path": "examples/train_samples.csv",
+      "bytes": 166,
+      "sha256": "bb32452e2f7304cc4caa69f387e75aa171eddf3bf3d2176dde684264ba5d9026"
+    },
+    {
+      "relative_path": "finetune.py",
+      "bytes": 1524,
+      "sha256": "2cf7f3ffb396fec9ad7dff71a2f4ca7150eaba601f2bd6f378d6debc6d555d4b"
+    },
+    {
+      "relative_path": "hest_download.py",
+      "bytes": 1473,
+      "sha256": "e7a9ffeae1444c0a9e119695cf015e365ef1587fe60f906bb88c400e4e34a304"
+    },
+    {
+      "relative_path": "impute.py",
+      "bytes": 7605,
+      "sha256": "989f66075d68b44dd490a4d8c4527a2d5486e10eb5ed164ff670f1752b5f3a6d"
+    },
+    {
+      "relative_path": "LICENSE",
+      "bytes": 11357,
+      "sha256": "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4"
+    },
+    {
+      "relative_path": "mask_expression.py",
+      "bytes": 3628,
+      "sha256": "e0ba97c6884069acc608009162908f517c5539d2fc01665e196a50f8f8330fec"
+    },
+    {
+      "relative_path": "output_attentions.py",
+      "bytes": 4157,
+      "sha256": "a9f8b1feae80481cc506cc2e4d58a1d2d10c987b00cd46a7718b7a15c5dd5899"
+    },
+    {
+      "relative_path": "preprocess.py",
+      "bytes": 9682,
+      "sha256": "65a66dfd5b8fbdfed32d48d868f9f7e093cb04e612a32b139309afeaa3153119"
+    },
+    {
+      "relative_path": "README.md",
+      "bytes": 19382,
+      "sha256": "a580e39d5d3bc245fff1b7cab2fc7b881626a1101434b04dc5f84081d073ad41"
+    },
+    {
+      "relative_path": "requirements.txt",
+      "bytes": 326,
+      "sha256": "5684f3afb3629012f38884bd1fc14a4dbf12c8ac355f582e3e62a439f25c106e"
+    },
+    {
+      "relative_path": "runtime.py",
+      "bytes": 4995,
+      "sha256": "5475196f725e31ed735f965c7eefb862f039d343c6d82f3a23dbd485bc885b26"
+    },
+    {
+      "relative_path": "spatialtip.py",
+      "bytes": 37692,
+      "sha256": "791048a0734ce1f60dc34b70f8110bf2a595e2160ed3f6ee633aa82f3b443bf4"
+    },
+    {
+      "relative_path": "spatialtip_init.py",
+      "bytes": 2054,
+      "sha256": "72438029d4b4c0a2e33002c60e5851082a21514b30845f9fcfc648eec84d7a2e"
+    },
+    {
+      "relative_path": "spatialtip_model.py",
+      "bytes": 8366,
+      "sha256": "1160b2eb0fb6174ffc0b4426e2e2ca86f77a1b2917084b9e282f8960e70aad88"
+    },
+    {
+      "relative_path": "THIRD_PARTY_NOTICES.md",
+      "bytes": 3031,
+      "sha256": "845d685a701140dc3251307329a2670773c815de4be236fd52869417bbb16a22"
+    },
+    {
+      "relative_path": "train.py",
+      "bytes": 19850,
+      "sha256": "687dd6e2d90b8e51195d34d0f30ecedecdb8e7225b6bfc70b94a322cb48144ad"
+    },
+    {
+      "relative_path": "utils.py",
+      "bytes": 3898,
+      "sha256": "787cfb2d781d60e990b5ef07918d62b5af2ef6d8bf08694d0d5d466447d3af5d"
+    }
+  ],
+  "comparison_document": {
+    "path": "CHANGES_FROM_INITIAL.md",
+    "baseline_commit": "d2d076f0f2aa5195df926bbf916b83976a22d529",
+    "scope": "Categorized Chinese comparison against the initial public snapshot, including behavior changes and compatibility. Documentation update only; executable source unchanged.",
+    "file_counts": {
+      "initial": 46,
+      "current_including_comparison_document": 28,
+      "new_paths": 15,
+      "modified_same_paths": 12,
+      "identical_same_paths": 1,
+      "initial_paths_not_included": 33
+    }
+  }
+}
