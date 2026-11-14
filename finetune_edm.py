@@ -2,11 +2,11 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 from torch.utils.data import DataLoader
-from stGPT_model_con_e1 import stGPTModel
+from spatialtip_edm_model import stGPTModel
 import argparse
 import os
 import torch.distributed as dist
-from dataset_e1 import stGPTData
+from dataset_edm import stGPTData
 from scBERT.utils import CosineAnnealingWarmupRestarts
 from utils import cleanup, AvgMeter, get_lr, get_reduced, Cal_Spatial_Net, mlm_mask, tokenize_batch
 import torch.nn.functional as F
@@ -240,7 +240,7 @@ def main():
 
     if is_master and not os.path.exists(args.adata_path):
         from pathlib import Path
-        from experiments.e1.prepare import materialize
+        from experiments.edm.prepare import materialize
         materialize(Path(args.adata_path).parent, args.adata_path)
     dist.barrier()
 

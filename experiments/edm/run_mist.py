@@ -1,24 +1,24 @@
-"""Run the uploaded MIST baseline on frozen E1 masks without editing MIST source."""
+"""Run the uploaded MIST baseline on frozen EDM masks without editing MIST source."""
 import argparse,datetime,json,random,sys,time
 from pathlib import Path
 import anndata as ad
 import numpy as np,pandas as pd,scanpy as sc
 from scipy.sparse import csr_matrix,load_npz
 ROOT=Path(__file__).resolve().parents[2]; MIST=ROOT.parent/'baselines/MIST'; sys.path[:0]=[str(MIST),str(ROOT)]
-from experiments.e1.prepare import materialize
-from experiments.e1.metrics import recovery_metrics
+from experiments.edm.prepare import materialize
+from experiments.edm.metrics import recovery_metrics
 from ReST import ReST
 
 def dense(x): return x.toarray() if hasattr(x,'toarray') else np.asarray(x)
 def main():
  p=argparse.ArgumentParser(); p.add_argument('--samples',nargs='+',default=['MISC1','MISC2','MISC5','MISC9','MISC10']); p.add_argument('--ratio',type=float,choices=[0.2,0.4,0.6],default=0.4); p.add_argument('--smoke',action='store_true'); p.add_argument('--ncores',type=int,default=10); p.add_argument('--n-experts',type=int,default=10); p.add_argument('--output-dir',type=Path); a=p.parse_args()
- random.seed(42); np.random.seed(42); mode='smoke' if a.smoke else 'formal'; out=a.output_dir or ROOT/f'experiments/e1/runs/MIST_expression_gene_42_{a.ratio}_{mode}'; out.mkdir(parents=True,exist_ok=True)
+ random.seed(42); np.random.seed(42); mode='smoke' if a.smoke else 'formal'; out=a.output_dir or ROOT/f'experiments/edm/runs/MIST_expression_gene_42_{a.ratio}_{mode}'; out.mkdir(parents=True,exist_ok=True)
  state={'status':'running','started_utc':datetime.datetime.now(datetime.timezone.utc).isoformat(),'samples':a.samples,'mask':f'frozen expression_gene seed=42 ratio={a.ratio}','source':'uploaded baselines/MIST, unchanged','protocol':{'preprocess':{'species':'Human','hvg_prop':0.8,'n_pcs':10},'extract_regions':{'min_sim':0.1,'min_size':20,'gap':0.02},'impute':{'method':'MIST','ncores':a.ncores,'nExperts':a.n_experts}},'jobs':{}}
  def save(): state['updated_utc']=datetime.datetime.now(datetime.timezone.utc).isoformat(); (out/'execution_status.json').write_text(json.dumps(state,indent=2))
  save(); rows=[]
  try:
   for sample in a.samples:
-   start=time.time(); state['jobs'][sample]={'status':'running'}; save(); folder=ROOT/f'experiments/e1/healthy_expression_smoke/expression_gene/42/{sample}_{a.ratio}'; temp=out/f'.{sample}_input.h5ad'; materialize(folder,temp)
+   start=time.time(); state['jobs'][sample]={'status':'running'}; save(); folder=ROOT/f'experiments/edm/healthy_expression_smoke/expression_gene/42/{sample}_{a.ratio}'; temp=out/f'.{sample}_input.h5ad'; materialize(folder,temp)
    try:
     masked=sc.read_h5ad(temp); original=sc.read_h5ad(ROOT/f'hest_data/st_healthy_opus/{sample}.h5ad'); excluded=json.loads((folder/'config.json').read_text())['excluded_missing_patch_barcodes']; truth=original[~original.obs_names.isin(excluded)].copy(); truth=truth[masked.obs_names,masked.var_names]; held=load_npz(folder/'heldout.npz').toarray().astype(bool)
     ncores,nexperts=a.ncores,a.n_experts
@@ -43,7 +43,7 @@ def main():
     pred=pred_df.loc[coordinate_ids.tolist(),masked.var_names].to_numpy()
     metrics=recovery_metrics(dense(truth.X),pred,held); elapsed=time.time()-start; rows.append({'Sample':sample,'Method':'MIST',**metrics,'elapsed_seconds':elapsed}); pd.DataFrame(rows).to_csv(out/'metrics_internal.csv',index=False)
     if not a.smoke:
-     result=ad.AnnData(X=csr_matrix(pred),obs=masked.obs.copy(),var=masked.var.copy(),obsm={'spatial':np.asarray(masked.obsm['spatial']).copy()}); result.uns['e1_protocol']=state['protocol']; result.write_h5ad(out/f'MIST_{sample}_prediction.h5ad',compression='gzip')
+     result=ad.AnnData(X=csr_matrix(pred),obs=masked.obs.copy(),var=masked.var.copy(),obsm={'spatial':np.asarray(masked.obsm['spatial']).copy()}); result.uns['edm_protocol']=state['protocol']; result.write_h5ad(out/f'MIST_{sample}_prediction.h5ad',compression='gzip')
     state['jobs'][sample].update(status='completed',elapsed_seconds=elapsed); save()
    finally: temp.unlink(missing_ok=True)
   d=pd.DataFrame(rows); d[['Sample','Method','heldout_count','RMSE','spot_CSS','gene_CSS']].rename(columns={'heldout_count':'Held-out entries','spot_CSS':'Spot-wise CSS','gene_CSS':'Gene-wise CSS'}).to_csv(out/'imputation_metrics_manuscript.csv',index=False); state.update(status='completed',ended_utc=datetime.datetime.now(datetime.timezone.utc).isoformat()); save(); print(d.to_string(index=False))

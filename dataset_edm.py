@@ -34,7 +34,7 @@ class stGPTData(torch.utils.data.Dataset):
             from scipy.sparse import load_npz
             self.heldout = load_npz(heldout_path).toarray()
             if self.heldout.dtype != bool:
-                raise ValueError('E1 heldout must be boolean True=heldout, not legacy keep-mask')
+                raise ValueError('EDM heldout must be boolean True=heldout, not legacy keep-mask')
             if self.heldout.shape != self.adata.shape:
                 raise ValueError('heldout shape mismatch')
         barcodes = self.patches_h5['barcode'][:].reshape(-1)

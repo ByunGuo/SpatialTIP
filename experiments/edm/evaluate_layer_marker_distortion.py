@@ -8,21 +8,21 @@ from sklearn.metrics import average_precision_score,roc_auc_score
 from sklearn.neighbors import NearestNeighbors
 from spatial_smoothing import spatial_smoothing
 from scipy.sparse import load_npz
-from experiments.e1.prepare import digest, ensure_annotations
-ROOT=Path(__file__).resolve().parents[2];OUT=ROOT/'experiments/e1/runs/layer_marker_distortion_v1';OUT.mkdir(parents=True,exist_ok=True)
+from experiments.edm.prepare import digest, ensure_annotations
+ROOT=Path(__file__).resolve().parents[2];OUT=ROOT/'experiments/edm/runs/layer_marker_distortion_v1';OUT.mkdir(parents=True,exist_ok=True)
 SAMPLES=['MISC1','MISC2','MISC5','MISC9','MISC10'];MAP={'MISC1':'151676','MISC2':'151675','MISC3':'151674','MISC5':'151672','MISC6':'151671','MISC8':'151669','MISC9':'151510','MISC10':'151509','MISC12':'151507'};FAMS=[['MISC1','MISC2','MISC3'],['MISC5','MISC6','MISC8'],['MISC9','MISC10','MISC12']];REFS={s:[x for f in FAMS if s in f for x in f if x!=s] for s in MAP}
 def dense(x):return x.toarray() if hasattr(x,'toarray') else np.asarray(x)
 def layer_values(frame,sid,index):return frame[frame.sid==sid].set_index('barcode').layer.reindex(index).astype(str).str.replace('L','',regex=False).replace({'2/3':'3'}).to_numpy()
 def runpath(s):
  manifest=os.environ.get('SPATIALTIP_PREDICTION_MANIFEST')
  if manifest:return Path(json.loads(Path(manifest).read_text())['SpatialTIP'][s]).parent
- return ROOT/('experiments/e1/pilot_MISC1/formal_expression_gene_42_0.4' if s=='MISC1' else f'experiments/e1/runs/{s}_expression_gene_42_0.4_formal')
+ return ROOT/('experiments/edm/pilot_MISC1/formal_expression_gene_42_0.4' if s=='MISC1' else f'experiments/edm/runs/{s}_expression_gene_42_0.4_formal')
 annotation=ensure_annotations();layers=pd.read_csv(annotation,sep='\t',header=None,names=['barcode','sid','layer'],dtype=str)
 config={'status':'building_external_labels','created_utc':datetime.datetime.now(datetime.timezone.utc).isoformat(),'labels':'same-patient two-reference-section agreement; target excluded','positive':'both references: layer detection>=.20 and normalized mean layer-minus-other >=.25','negative':'both references: layer detection<=.05, pooled other-layer detection>=.05, and layer-minus-other<=0','normalization':'raw counts normalize_total(1e4), log1p','target_score':'mean normalized expression in layer minus other annotated layers','prediction_use':'replace only original observed zeros; restore all target observed nonzeros, including synthetic heldouts','threshold_sensitivity':.5,'samples':{}}
 (OUT/'evaluation_config.json').write_text(json.dumps(config,indent=2))
 labels_by_sample={}
 for s in SAMPLES:
- cfg=json.loads((ROOT/f'experiments/e1/healthy_expression_smoke/expression_gene/42/{s}_0.4/config.json').read_text());a=ad.read_h5ad(ROOT/f'hest_data/st_healthy_opus/{s}.h5ad');a=a[~a.obs_names.isin(cfg['excluded_missing_patch_barcodes'])].copy();tl=layer_values(layers,MAP[s],a.obs_names);valid=tl!='nan';refs=[]
+ cfg=json.loads((ROOT/f'experiments/edm/healthy_expression_smoke/expression_gene/42/{s}_0.4/config.json').read_text());a=ad.read_h5ad(ROOT/f'hest_data/st_healthy_opus/{s}.h5ad');a=a[~a.obs_names.isin(cfg['excluded_missing_patch_barcodes'])].copy();tl=layer_values(layers,MAP[s],a.obs_names);valid=tl!='nan';refs=[]
  for r in REFS[s]:
   q=ad.read_h5ad(ROOT/f'hest_data/st/{r}.h5ad');rl=layer_values(layers,MAP[r],q.obs_names);rv=rl!='nan';idx=q.var_names.get_indexer(a.var_names);x=dense(q.X[:,idx]).astype(np.float64);x=np.log1p(x/np.maximum(x.sum(1,keepdims=True),1)*1e4);refs.append((x,rl,rv,dense(q.X[:,idx])>0))
  labelrows=[]
@@ -38,7 +38,7 @@ for s in SAMPLES:
 config['status']='labels_frozen_before_prediction_evaluation';config['labels_frozen_utc']=datetime.datetime.now(datetime.timezone.utc).isoformat();(OUT/'evaluation_config.json').write_text(json.dumps(config,indent=2))
 rows=[];toprows=[]
 for s,(a,tl,valid,lab) in labels_by_sample.items():
- z=dense(a.X);pred=ad.read_h5ad(runpath(s)/'prediction.h5ad');y=dense(pred.X);held=load_npz(ROOT/f'experiments/e1/healthy_expression_smoke/expression_gene/42/{s}_0.4/heldout.npz').toarray();masked=np.where(held,0,z);completed=np.where(masked==0,y,masked);smoothed=spatial_smoothing(masked,y,a.obsm['spatial'],radius=150);
+ z=dense(a.X);pred=ad.read_h5ad(runpath(s)/'prediction.h5ad');y=dense(pred.X);held=load_npz(ROOT/f'experiments/edm/healthy_expression_smoke/expression_gene/42/{s}_0.4/heldout.npz').toarray();masked=np.where(held,0,z);completed=np.where(masked==0,y,masked);smoothed=spatial_smoothing(masked,y,a.obsm['spatial'],radius=150);
  # Isolate original-zero effects: exact original nonzeros are restored.
  outputs={'Observed input':z,'SpatialTIP':np.where(z==0,smoothed,z)}
  for name,x in outputs.items():

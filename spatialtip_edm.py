@@ -856,7 +856,7 @@ class BertLMHeadModel(BertPreTrainedModel):
         lm_loss = None
         if labels is not None:
             labels = labels.contiguous()
-            mask = (gene_exp == -1) & (labels >= 0)  # E1: negative labels exclude benchmark holdouts
+            mask = (gene_exp == -1) & (labels >= 0)  # EDM: negative labels exclude benchmark holdouts
             prediction_scores = prediction_scores[:, 1:]
             mask_prediction_scores = prediction_scores * mask
             mask_labels = labels * mask

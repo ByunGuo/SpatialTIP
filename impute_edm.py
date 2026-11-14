@@ -2,10 +2,10 @@ import scipy as sp
 import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader
-from stGPT_model_con_e1 import stGPTModel
+from spatialtip_edm_model import stGPTModel
 import argparse
 import os
-from dataset_e1 import stGPTData
+from dataset_edm import stGPTData
 from utils import cleanup, AvgMeter, get_lr, get_reduced, Cal_Spatial_Net, tokenize_batch
 import torch.nn.functional as F
 import tqdm
@@ -80,7 +80,7 @@ def main():
 
     if not os.path.exists(adata_path):
         from pathlib import Path
-        from experiments.e1.prepare import materialize
+        from experiments.edm.prepare import materialize
         materialize(Path(adata_path).parent, adata_path)
 
     test_loader = data_loader_fn(args, test_sample, test_mask_prob)
@@ -132,7 +132,7 @@ def main():
 
     adata = sc.read_h5ad(adata_path)
     adata = adata[:imputed_gene_expression.shape[0]].copy()
-    adata.uns['e1_execution'] = {'run_mode':args.run_mode, 'step_limited':args.max_batches is not None, 'ablation':'full'}
+    adata.uns['edm_execution'] = {'run_mode':args.run_mode, 'step_limited':args.max_batches is not None, 'ablation':'full'}
     adata.X = imputed_gene_expression
     adata.write_h5ad(adata_save_path, compression='gzip')
 

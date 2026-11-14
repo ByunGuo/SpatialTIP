@@ -363,13 +363,13 @@ requires the original CUDA environment and FlashAttention; CPU checks do not val
 
 ### EDM preparation and recovery
 
-`experiments/e1/prepare.py` generates a boolean mask (`True = held-out observed nonzero`),
+`experiments/edm/prepare.py` generates a boolean mask (`True = held-out observed nonzero`),
 `input.h5ad`, and its configuration. Intrinsic zeros are never selected. Supply frozen
 training-derived gene effects, or fit them using only the exact training panels belonging
 to the selected pretrained model. Target expression must not enter that fit.
 
 ```bash
-python -m experiments.e1.prepare --sample MISC1 \
+python -m experiments.edm.prepare --sample MISC1 \
   --expression hest_data/st_healthy_opus/MISC1.h5ad \
   --patches hest_data/st/patches/MISC1.h5 \
   --training-inputs TRAINING_PANEL_1.h5ad TRAINING_PANEL_2.h5ad \
@@ -378,24 +378,24 @@ python -m experiments.e1.prepare --sample MISC1 \
 
 Replace the two illustrative training paths with the **complete actual training panel list**.
 For subsequent targets use `--gene-effects PATH_TO_GENERATED_GENE_EFFECT_JSON` instead.
-Masking defaults to `experiments/e1/healthy_expression_smoke/expression_gene/42/MISC1_0.4/`;
+Masking defaults to `experiments/edm/healthy_expression_smoke/expression_gene/42/MISC1_0.4/`;
 this historical directory name is retained for the baseline adapters. It does not imply
 that the preparation or a run is a smoke test. Other samples/ratios use the matching path.
 To reproduce existing results, the source gene/spot axes, normalization and frozen training
 effects must match the experimental input version; a different processed panel is a new run.
 
 ```bash
-torchrun --standalone --nproc_per_node=4 finetune_evaluate_e1.py \
+torchrun --standalone --nproc_per_node=4 finetune_edm.py \
   --run_mode formal --finetune_sample MISC1 --seed 42 --test_mask_prob 0.4 \
   --adata_path MASK_FOLDER/input.h5ad --heldout_path MASK_FOLDER/heldout.npz \
   --patches_path hest_data/st/patches/MISC1.h5 \
   --vocabulary_path MATCHING_VOCABULARY.json --checkpoint_path MATCHING_CHECKPOINT.pt \
   --save_dir MODEL_OUTPUT
-python impute_evaluate_e1.py --run_mode formal --test_sample MISC1 \
+python impute_edm.py --run_mode formal --test_sample MISC1 \
   --adata_path MASK_FOLDER/input.h5ad --patches_path hest_data/st/patches/MISC1.h5 \
   --vocabulary_path MATCHING_VOCABULARY.json --checkpoint_path SELECTED_CHECKPOINT.pt \
   --output_path PREDICTION_FOLDER/prediction.h5ad
-python evaluate_e1.py --sample MISC1 --seed 42 --mask_prob 0.4 \
+python evaluate_edm.py --sample MISC1 --seed 42 --mask_prob 0.4 \
   --adata_path MASK_FOLDER/input.h5ad --truth_path hest_data/st_healthy_opus/MISC1.h5ad \
   --prediction_path PREDICTION_FOLDER/prediction.h5ad \
   --heldout_path MASK_FOLDER/heldout.npz --output_dir METRICS_FOLDER
@@ -405,7 +405,7 @@ Replace uppercase paths with actual files. `--run_mode formal` is required for a
 the retained experimental default is a limited smoke run. Pass the actual model's
 `--vocab_size`, `--tissue_type` and `--max_seq_len` where they differ from healthy defaults.
 NoFT uses the pretrained checkpoint directly at inference. Full checkpoints must match
-their exact gene/tissue mappings. The historical E1 healthy scripts used the `corrected`
+their exact gene/tissue mappings. The historical EDM healthy scripts used the `corrected`
 checkpoint; the originally released healthy checkpoint is not asserted to reproduce that
 parameter state. This source update does not substitute one for the other.
 
@@ -413,7 +413,7 @@ parameter state. This source update does not substitute one for the other.
 
 Use the same EDM entry points. For HD patches add `--resize_images` to both training and
 inference. For the actual unknown-heart-organ policy (`tissue=-1`), substitute
-`experiments/e2/run_organ_entry.py train` or `experiments/e2/run_organ_entry.py infer`
+`experiments/cross_tissue/run_organ_entry.py train` or `experiments/cross_tissue/run_organ_entry.py infer`
 for the corresponding script name, retaining all remaining arguments. This wrapper uses
 a zero tissue feature for unknown organs, as in the experiment. Known tissue features
 are unchanged. No separate cross-tissue training pipeline is introduced.
@@ -426,11 +426,11 @@ original method code in `../baselines/{GraphST,STAGATE,SEDR,MIST,stlearn}`. Thes
 sources, model weights and environments are not bundled here.
 
 ```bash
-python -m experiments.e1.run_magic_e1 --samples MISC1 --ratio 0.4
-python -m experiments.e1.run_uploaded_graph_baselines_e1 --methods GraphST --samples MISC1 --ratio 0.4
-python -m experiments.e1.run_mist_e1 --samples MISC1 --ratio 0.4
-python -m experiments.e1.run_stlearn_e1 --samples MISC1 --ratio 0.4
-python -m experiments.e1.evaluate_uploaded_reference_predictions_e1 \
+python -m experiments.edm.run_magic --samples MISC1 --ratio 0.4
+python -m experiments.edm.run_uploaded_graph_baselines --methods GraphST --samples MISC1 --ratio 0.4
+python -m experiments.edm.run_mist --samples MISC1 --ratio 0.4
+python -m experiments.edm.run_stlearn --samples MISC1 --ratio 0.4
+python -m experiments.edm.evaluate_uploaded_reference_predictions \
   --method BLEEP --samples MISC1 --ratio 0.4 \
   --prediction-dir BASELINE_PREDICTIONS --output-dir BASELINE_METRICS
 ```
@@ -443,8 +443,8 @@ and the frozen masks at the preparation paths above. Baseline predictions must b
 the intended experimental protocol, with matching gene/barcode identities.
 
 ALRA/scImpute/ZINB-WaVE reference adapters are provided in `run_reference_pilot.R`.
-Use `python -m experiments.e1.export_reference_inputs --sample MISC1 --output REF_INPUT`,
-then `Rscript experiments/e1/run_reference_pilot.R . REF_INPUT REF_OUTPUT ALRA formal`
+Use `python -m experiments.edm.export_reference_inputs --sample MISC1 --output REF_INPUT`,
+then `Rscript experiments/edm/run_reference_pilot.R . REF_INPUT REF_OUTPUT ALRA formal`
 (or `scImpute`/`ZINB_WaVE`). These reference/proxy adapters require matching raw integer
 counts at `hest_data/st/<sample>.h5ad`; normalized expression is not a substitute.
 They are separate from the EDM recovery baseline table.
@@ -452,9 +452,9 @@ They are separate from the EDM recovery baseline table.
 ### Original-zero proxy analysis
 
 ```bash
-python -m experiments.e1.evaluate_cross_section_zero_proxy_e1
-python -m experiments.e1.evaluate_layer_marker_distortion_e1
-python -m experiments.e1.evaluate_baseline_false_positive_e1 --methods SpatialTIP
+python -m experiments.edm.evaluate_cross_section_zero_proxy
+python -m experiments.edm.evaluate_layer_marker_distortion
+python -m experiments.edm.evaluate_baseline_false_positive --methods SpatialTIP
 ```
 
 The five target sections, same-patient reference sections, label rules and numerical
@@ -488,7 +488,7 @@ All SpatialTIP output-smoothing entries use `spatial_smoothing.py`. Observed non
 input values are retained and predictions fill input zeros before pooling. A single
 average is computed from that fixed assembled matrix over self and the undirected
 neighbor graph. DLPFC uses radius 150. Other platforms can set `--n_neighbors` in
-`evaluate.py` or `evaluate_e1.py` to the experiment's 6--12 neighbors, excluding self.
+`evaluate.py` or `evaluate_edm.py` to the experiment's 6--12 neighbors, excluding self.
 KNN edges are symmetrized, so the final undirected neighborhood can exceed k.
 This replaces sequential in-place updates in the original evaluation/notebook;
 historical numerical results have not been recomputed. Original-zero marker metrics

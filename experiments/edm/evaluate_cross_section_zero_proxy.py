@@ -14,10 +14,10 @@ from scipy.sparse import csr_matrix, load_npz, save_npz
 from sklearn.metrics import average_precision_score, roc_auc_score
 from sklearn.neighbors import NearestNeighbors
 from spatial_smoothing import spatial_smoothing
-from experiments.e1.prepare import digest, ensure_annotations
+from experiments.edm.prepare import digest, ensure_annotations
 
 ROOT=Path(__file__).resolve().parents[2]
-OUT=ROOT/'experiments/e1/runs/cross_section_zero_proxy_v1'
+OUT=ROOT/'experiments/edm/runs/cross_section_zero_proxy_v1'
 SAMPLES=['MISC1','MISC2','MISC5','MISC9','MISC10']
 MAP={'MISC1':'151676','MISC2':'151675','MISC3':'151674','MISC5':'151672','MISC6':'151671','MISC8':'151669','MISC9':'151510','MISC10':'151509','MISC12':'151507'}
 FAMILIES=[['MISC1','MISC2','MISC3'],['MISC5','MISC6','MISC8'],['MISC9','MISC10','MISC12']]
@@ -32,8 +32,8 @@ def sha_array(h,*arrays):
  for x in arrays:h.update(np.ascontiguousarray(x).view(np.uint8))
 
 def paths(sample):
- folder=ROOT/f'experiments/e1/healthy_expression_smoke/expression_gene/42/{sample}_0.4'
- run=ROOT/('experiments/e1/pilot_MISC1/formal_expression_gene_42_0.4' if sample=='MISC1' else f'experiments/e1/runs/{sample}_expression_gene_42_0.4_formal')
+ folder=ROOT/f'experiments/edm/healthy_expression_smoke/expression_gene/42/{sample}_0.4'
+ run=ROOT/('experiments/edm/pilot_MISC1/formal_expression_gene_42_0.4' if sample=='MISC1' else f'experiments/edm/runs/{sample}_expression_gene_42_0.4_formal')
  manifest=os.environ.get("SPATIALTIP_PREDICTION_MANIFEST")
  if manifest:run=Path(json.loads(Path(manifest).read_text())["SpatialTIP"][sample]).parent
  return folder,run

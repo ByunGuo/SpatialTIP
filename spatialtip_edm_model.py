@@ -5,7 +5,7 @@ import torch.nn as nn
 from torch.cuda.amp import autocast as autocast
 from torch.nn import functional as F
 from utils import concat_all_gather, all_gather_with_grad
-from stGPT_init_con_e1 import (
+from spatialtip_edm_init import (
     stGPTBase,
     disabled_train,
 )

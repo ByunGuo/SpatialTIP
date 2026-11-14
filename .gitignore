@@ -43,13 +43,13 @@ Metrices/
 
 # Research workspace material excluded from this source release
 experiments/*
-!experiments/e1/
-!experiments/e2/
-experiments/e1/*
-experiments/e2/*
-!experiments/e1/*.py
-!experiments/e1/*.R
-!experiments/e2/run_organ_entry.py
+!experiments/edm/
+!experiments/cross_tissue/
+experiments/edm/*
+experiments/cross_tissue/*
+!experiments/edm/*.py
+!experiments/edm/*.R
+!experiments/cross_tissue/run_organ_entry.py
 baselines/
 baseline_extensions/
 ablation*/

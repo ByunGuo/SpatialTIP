@@ -6,7 +6,7 @@ import h5py
 import numpy as np
 from scipy.io import mmwrite
 from scipy.sparse import csr_matrix
-from experiments.e1.prepare import ROOT,TEST,digest,matrix
+from experiments.edm.prepare import ROOT,TEST,digest,matrix
 p=argparse.ArgumentParser()
 p.add_argument('--sample',choices=TEST,required=True)
 p.add_argument('--output',type=Path,required=True)

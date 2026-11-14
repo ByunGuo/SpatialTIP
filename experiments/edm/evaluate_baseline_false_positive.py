@@ -1,4 +1,4 @@
-"""Compare manuscript baselines on frozen E1 false-positive proxy labels.
+"""Compare manuscript baselines on frozen EDM false-positive proxy labels.
 
 The cross-section and layer-marker labels must already exist.  This script never
 rebuilds labels from predictions.  All methods are evaluated on the per-slice
@@ -21,7 +21,7 @@ from spatial_smoothing import spatial_smoothing
 
 
 ROOT = Path(__file__).resolve().parents[2]
-RUNS = ROOT / "experiments/e1/runs"
+RUNS = ROOT / "experiments/edm/runs"
 OUT = RUNS / "baseline_false_positive_v1"
 SAMPLES = ["MISC1", "MISC2", "MISC5", "MISC9", "MISC10"]
 METHODS = [
@@ -37,7 +37,7 @@ def dense(value):
 
 
 def mask_dir(sample):
-    return ROOT / f"experiments/e1/healthy_expression_smoke/expression_gene/42/{sample}_0.4"
+    return ROOT / f"experiments/edm/healthy_expression_smoke/expression_gene/42/{sample}_0.4"
 
 
 def prediction_path(method, sample):
@@ -45,7 +45,7 @@ def prediction_path(method, sample):
     if manifest:
         return Path(json.loads(Path(manifest).read_text())[method][sample])
     paths = {
-        "SpatialTIP": ROOT / ("experiments/e1/pilot_MISC1/formal_expression_gene_42_0.4/prediction.h5ad" if sample == "MISC1" else f"experiments/e1/runs/{sample}_expression_gene_42_0.4_formal/prediction.h5ad"),
+        "SpatialTIP": ROOT / ("experiments/edm/pilot_MISC1/formal_expression_gene_42_0.4/prediction.h5ad" if sample == "MISC1" else f"experiments/edm/runs/{sample}_expression_gene_42_0.4_formal/prediction.h5ad"),
         "MAGIC": RUNS / f"healthy_magic_expression_gene_42_0.4/{sample}_prediction.h5ad",
         "GraphST": RUNS / f"uploaded_graph_baselines_expression_gene_42_0.4_formal/GraphST/GraphST_{sample}_prediction.h5ad",
         "STAGATE": RUNS / f"uploaded_graph_baselines_expression_gene_42_0.4_formal/STAGATE/STAGATE_{sample}_prediction.h5ad",
@@ -102,7 +102,7 @@ def read_prediction(method, sample, target, genes, truth, heldout):
     if method != "SpatialTIP":
         return values
     # Reproduce the manuscript SpatialTIP output: direct model imputation followed
-    # by the same radius-150 spatial smoothing used in the completed E1 analysis.
+    # by the same radius-150 spatial smoothing used in the completed EDM analysis.
     return spatial_smoothing(np.where(heldout,0,truth), values,
                              target.obsm["spatial"],radius=150).astype(np.float32)
 
@@ -135,7 +135,7 @@ def marker_metrics(sample, method, target, genes, truth, scores, labels):
     rows = []
     labels = labels[labels["Gene"].isin(gene_to_index)].copy()
     labels["Shared gene index"] = labels["Gene"].map(gene_to_index)
-    layer_values = target.obs["_e1_layer"].to_numpy()
+    layer_values = target.obs["_proxy_layer"].to_numpy()
     valid = layer_values != "nan"
     for layer, group in labels.groupby("Layer"):
         inside = valid & (layer_values == str(layer))
@@ -165,14 +165,14 @@ def main():
     args = parser.parse_args()
     args.output_dir.mkdir(parents=True, exist_ok=True)
     annotation = pd.read_csv(
-        ROOT / "experiments/e1/reference_annotations/dlpfc_barcode_level_layer_map.tsv",
+        ROOT / "experiments/edm/reference_annotations/dlpfc_barcode_level_layer_map.tsv",
         sep="\t", header=None, names=["barcode", "sid", "layer"], dtype=str,
     )
     section_ids = {"MISC1": "151676", "MISC2": "151675", "MISC5": "151672", "MISC9": "151510", "MISC10": "151509"}
     audit = {
         "status": "running",
         "created_utc": datetime.datetime.now(datetime.timezone.utc).isoformat(),
-        "mask": "E1 expression_gene, seed 42, ratio 0.4",
+        "mask": "EDM expression_gene, seed 42, ratio 0.4",
         "methods": args.methods, "samples": args.samples,
         "comparison_universe": "per-slice spot set and gene intersection shared by all evaluated methods",
         "labels": "pre-existing prediction-blind cross-section and external layer-marker proxies",
@@ -188,7 +188,7 @@ def main():
         target_indices = read_target(sample).var_names.get_indexer(genes)
         heldout = load_npz(mask_dir(sample) / "heldout.npz")[:, target_indices].toarray().astype(bool)
         layers = annotation[annotation.sid == section_ids[sample]].set_index("barcode").layer.reindex(target.obs_names)
-        target.obs["_e1_layer"] = layers.astype(str).str.replace("L", "", regex=False).replace({"2/3": "3"}).to_numpy()
+        target.obs["_proxy_layer"] = layers.astype(str).str.replace("L", "", regex=False).replace({"2/3": "3"}).to_numpy()
         positive = load_npz(PROXY_DIR / f"{sample}_positive_dropout_proxy.npz")[:, target_indices].toarray().astype(bool)
         negatives = {
             "primary_5pct": load_npz(PROXY_DIR / f"{sample}_negative_primary_5pct.npz")[:, target_indices].toarray().astype(bool),
@@ -226,7 +226,7 @@ def main():
         target = target[:, genes].copy()
         truth = dense(target.X).astype(np.float32)
         layers = annotation[annotation.sid == section_ids[sample]].set_index("barcode").layer.reindex(target.obs_names)
-        target.obs["_e1_layer"] = layers.astype(str).str.replace("L", "", regex=False).replace({"2/3": "3"}).to_numpy()
+        target.obs["_proxy_layer"] = layers.astype(str).str.replace("L", "", regex=False).replace({"2/3": "3"}).to_numpy()
         labels = pd.read_csv(MARKER_DIR / f"{sample}_external_marker_labels.csv")
         observed_rows.extend(marker_metrics(sample, "Observed input", target, genes, truth, truth, labels))
     observed_effect = pd.DataFrame(observed_rows)["Positive marker mean effect"].mean()

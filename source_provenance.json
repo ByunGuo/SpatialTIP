@@ -38,7 +38,8 @@
     "Real H5AD frozen-mask roundtrip",
     "Original shared utility AST equality",
     "Only original notebook evaluation cell changed",
-    "Smoothing assembly, self inclusion, synchronous mean, order independence, radius and undirected KNN fixtures"
+    "Smoothing assembly, self inclusion, synchronous mean, order independence, radius and undirected KNN fixtures",
+    "Public module names and imports renamed by function; scientific calculations unchanged"
   ],
   "not_validated": [
     "Full CUDA execution",
@@ -91,11 +92,11 @@
     },
     {
       "relative_path": ".gitignore",
-      "sha256": "d4c2a4b6e9ab40b43a54b488c907891d236c9aa48e4844f916113427dc0c759d"
+      "sha256": "39c7d8f9e2b7ff386b67522a530c87772df13944d262579e526cf7b6079f5cea"
     },
     {
       "relative_path": "CHANGES_FROM_INITIAL.md",
-      "sha256": "eeb07474e68a715d6cc0c0363365e23c4afed646c76d5446b1c2a02c2bfd5df6"
+      "sha256": "67183bdd03d1da12746d5685e37ad1668f493e7cf6f3d9458d805981a0ea5658"
     },
     {
       "relative_path": "DLPFC/151507/151507_truth.txt",
@@ -151,7 +152,7 @@
     },
     {
       "relative_path": "README.md",
-      "sha256": "c70c55ab65cdceeceb4668e803cfc54cda7bae52c9a9e23acd7c1b92ca7c4efd"
+      "sha256": "6a49d2d5d0985394c6255dca3283850e3155bbe7ea314219a016b1320bf91669"
     },
     {
       "relative_path": "THIRD_PARTY_NOTICES.md",
@@ -162,8 +163,8 @@
       "sha256": "a7d8874b389eda0ea337967ca5138b68034c1ab54898ae909cbd8611f4f6a070"
     },
     {
-      "relative_path": "dataset_e1.py",
-      "sha256": "2bfc8716c56f1863285b2ac1f3eb1e35e51859211e7d16a09528de9abadf6c1c"
+      "relative_path": "dataset_edm.py",
+      "sha256": "263620cd9e8c1794a2bc5732bce7c7064cf352273270323f642cf9f3b7c7fca3"
     },
     {
       "relative_path": "environment.yml",
@@ -174,68 +175,68 @@
       "sha256": "bafabc86001778db6ce96802fa6b02a4270432435e3377156c265c9eeadd4579"
     },
     {
-      "relative_path": "evaluate_e1.py",
-      "sha256": "5ede6fc9fa306910fcd66f878709c44fe0d3866f0eecbdb927322a6aac96c348"
+      "relative_path": "evaluate_edm.py",
+      "sha256": "84dd408bc87dc55f55528154a9d157389563111624cf35a86dbf6f1819fbe10f"
     },
     {
-      "relative_path": "experiments/e1/evaluate_baseline_false_positive_e1.py",
-      "sha256": "09973564f1d4726c23795ba928db0587573ba3baefb4ec97abc2355980c95476"
+      "relative_path": "experiments/edm/evaluate_baseline_false_positive.py",
+      "sha256": "f9615fd0214b61efbb68617517e996979fd2acc9dbb3fd5ba920c11167607681"
     },
     {
-      "relative_path": "experiments/e1/evaluate_cross_section_zero_proxy_e1.py",
-      "sha256": "db23e5535045b1bac231904d99eeb640d0798cce5153d799f222301158fb153b"
+      "relative_path": "experiments/edm/evaluate_cross_section_zero_proxy.py",
+      "sha256": "711b7ba52fdd7e3dc19731ddc9955c93d38943fffa70a9345863c0edf530971c"
     },
     {
-      "relative_path": "experiments/e1/evaluate_layer_marker_distortion_e1.py",
-      "sha256": "db0a77324d2bf1bf30e3d25223983a008b4ca2d747ddeff3677696df15300597"
+      "relative_path": "experiments/edm/evaluate_layer_marker_distortion.py",
+      "sha256": "c2edc64022010996f9204858840b0736b44277a620e5454967e89371296ae7d9"
     },
     {
-      "relative_path": "experiments/e1/evaluate_uploaded_reference_predictions_e1.py",
-      "sha256": "7b37c6163c17d87752ea010d26b5284dc5124247a1d77f76973dbc0614bcc090"
+      "relative_path": "experiments/edm/evaluate_uploaded_reference_predictions.py",
+      "sha256": "cd26005e1333056a26a352b115f6c6e124e0386031d1253932eb18f4f4ddc1a9"
     },
     {
-      "relative_path": "experiments/e1/export_reference_inputs.py",
-      "sha256": "9db7a53f001291b5920ec63e3a54e210bc75995afc5175ef0ebd8bcd84e7b845"
+      "relative_path": "experiments/edm/export_reference_inputs.py",
+      "sha256": "e3e972218ac68f2894dcda7093592025ad899c65b5981cd3cc6748cc14a95bbe"
     },
     {
-      "relative_path": "experiments/e1/metrics.py",
+      "relative_path": "experiments/edm/metrics.py",
       "sha256": "a281820d007fbf4cf3ad8c76bca787ccb12753ac43569d2b3639271ee173e380"
     },
     {
-      "relative_path": "experiments/e1/prepare.py",
-      "sha256": "590e9724da10f7a891c495fb3d165f144a8bc790bbb006fdbfcb0da387e95cf5"
+      "relative_path": "experiments/edm/prepare.py",
+      "sha256": "20f67592784fc4af7f13c4154bce540183d02326f79bec5688bb2f0f4542cdde"
     },
     {
-      "relative_path": "experiments/e1/run_magic_e1.py",
-      "sha256": "2b3cdb7d2b61e5aa2fb26b484b727dd3ed2b758147db050b7387b80a742f79d3"
+      "relative_path": "experiments/edm/run_magic.py",
+      "sha256": "7881b6fe8139f4e4e998e133ea62f27d3db50203d5b2bd50338e3068938cdeba"
     },
     {
-      "relative_path": "experiments/e1/run_mist_e1.py",
-      "sha256": "00223c68142e5531afe7bee2547022afd9e236b6a44337a7d5f73c414722abcf"
+      "relative_path": "experiments/edm/run_mist.py",
+      "sha256": "4c518adcf0f1bac2ed147efcd7eec3399f8aa31acd8a493eb44f0b020e9d84be"
     },
     {
-      "relative_path": "experiments/e1/run_reference_pilot.R",
-      "sha256": "ea984e2fc017f32973fb9a8338bab721b401cac581ee541db49da45298fcc6cb"
+      "relative_path": "experiments/edm/run_reference_pilot.R",
+      "sha256": "7af9c08b0d96ce94a1d87a101adc17bfd4e5e812c3139d8ff84f3bce81115004"
     },
     {
-      "relative_path": "experiments/e1/run_stlearn_e1.py",
-      "sha256": "95b8b64724ae9cda25b4523552a3b029045e5a4fc0ba85e4bd0614b58fe1ff18"
+      "relative_path": "experiments/edm/run_stlearn.py",
+      "sha256": "61fcd689ce2785f8ff16c700c46816ddca81937e170bedc960e77dcb7c1c2911"
     },
     {
-      "relative_path": "experiments/e1/run_uploaded_graph_baselines_e1.py",
-      "sha256": "538d11ab60f91d6cb26e527bd790d3461246c93b099c8cdf06177163c081fd4e"
+      "relative_path": "experiments/edm/run_uploaded_graph_baselines.py",
+      "sha256": "31752b0d0f8181c45591edb22a125acc05bfdd7053bf29d90e1a5c0fa9e59a9a"
     },
     {
-      "relative_path": "experiments/e2/run_organ_entry.py",
-      "sha256": "7fdefd443d1d281199f630df7bb7534a85e600fdb107102caf22675cf2fd0a1b"
+      "relative_path": "experiments/cross_tissue/run_organ_entry.py",
+      "sha256": "a0904579de85657c06588ff1c2fe84f2cc584310435908d911a4f7a044169e7e"
     },
     {
       "relative_path": "finetune.py",
       "sha256": "0f16373588fceb7f4fdc530b39af4fe828c4a6c5c8ac23c4607bd9073f3ab1d1"
     },
     {
-      "relative_path": "finetune_evaluate_e1.py",
-      "sha256": "e2f5d026351f6b5f767634a1734aed96474f42905d8dba8ed63c3391ceb42d96"
+      "relative_path": "finetune_edm.py",
+      "sha256": "f771545a8417b32b615baf0d5e18db3716b19594c8d65c3c6641d87e34ef4046"
     },
     {
       "relative_path": "finetune_masked.py",
@@ -270,8 +271,8 @@
       "sha256": "a1b6e5893f76fd06bcd6634f320cd6b7c0f47577b0e95ed5790c79cce963ad0d"
     },
     {
-      "relative_path": "impute_evaluate_e1.py",
-      "sha256": "86f60b0ed1e6bbc7b8ab6313b2128515ed33f063863d08a39a41cd07b8952878"
+      "relative_path": "impute_edm.py",
+      "sha256": "04e7cde64ce9caa177b715e56949d19f4c4308ff303cbbc8b9e53dec2520ba8e"
     },
     {
       "relative_path": "impute_masked.py",
@@ -354,16 +355,16 @@
       "sha256": "3db0c80112803b77ae032179686c831e264f4191f60c9fa147001301f4f03cc9"
     },
     {
-      "relative_path": "stGPT_con_e1.py",
-      "sha256": "48e909ae61253768e077f13b10959dbce6da65d6ecf92eb64f8fb201910484db"
+      "relative_path": "spatialtip_edm.py",
+      "sha256": "87a0f5950a5eededac86a2f798d674d012700d72ca1a137a01483e46d54af1ad"
     },
     {
-      "relative_path": "stGPT_init_con_e1.py",
-      "sha256": "3dbd060a03636f74cff7bb93f54064512697c850d46ef537d3060ae9d224e310"
+      "relative_path": "spatialtip_edm_init.py",
+      "sha256": "3ea9b40145ef03405ad06635e1ac9b70827b45a91aa901581cc613a7a2a42585"
     },
     {
-      "relative_path": "stGPT_model_con_e1.py",
-      "sha256": "32af653964f55cec9308688cc6a0e2cd4bb584721e228162b93781d407cf41b6"
+      "relative_path": "spatialtip_edm_model.py",
+      "sha256": "0439a3462448b3355de96adc66582b34cab9cddcd80bd0268ad845cdf6279507"
     },
     {
       "relative_path": "train.py",
@@ -376,27 +377,27 @@
   ],
   "revision_source_root": "spatialTIP research workspace",
   "revision_added_files": [
-    "dataset_e1.py",
-    "evaluate_e1.py",
-    "experiments/e1/evaluate_baseline_false_positive_e1.py",
-    "experiments/e1/evaluate_cross_section_zero_proxy_e1.py",
-    "experiments/e1/evaluate_layer_marker_distortion_e1.py",
-    "experiments/e1/evaluate_uploaded_reference_predictions_e1.py",
-    "experiments/e1/export_reference_inputs.py",
-    "experiments/e1/metrics.py",
-    "experiments/e1/prepare.py",
-    "experiments/e1/run_magic_e1.py",
-    "experiments/e1/run_mist_e1.py",
-    "experiments/e1/run_reference_pilot.R",
-    "experiments/e1/run_stlearn_e1.py",
-    "experiments/e1/run_uploaded_graph_baselines_e1.py",
-    "experiments/e2/run_organ_entry.py",
-    "finetune_evaluate_e1.py",
-    "impute_evaluate_e1.py",
+    "dataset_edm.py",
+    "evaluate_edm.py",
+    "experiments/edm/evaluate_baseline_false_positive.py",
+    "experiments/edm/evaluate_cross_section_zero_proxy.py",
+    "experiments/edm/evaluate_layer_marker_distortion.py",
+    "experiments/edm/evaluate_uploaded_reference_predictions.py",
+    "experiments/edm/export_reference_inputs.py",
+    "experiments/edm/metrics.py",
+    "experiments/edm/prepare.py",
+    "experiments/edm/run_magic.py",
+    "experiments/edm/run_mist.py",
+    "experiments/edm/run_reference_pilot.R",
+    "experiments/edm/run_stlearn.py",
+    "experiments/edm/run_uploaded_graph_baselines.py",
+    "experiments/cross_tissue/run_organ_entry.py",
+    "finetune_edm.py",
+    "impute_edm.py",
     "spatial_metrics.py",
     "spatial_smoothing.py",
-    "stGPT_con_e1.py",
-    "stGPT_init_con_e1.py",
-    "stGPT_model_con_e1.py"
+    "spatialtip_edm.py",
+    "spatialtip_edm_init.py",
+    "spatialtip_edm_model.py"
   ]
 }

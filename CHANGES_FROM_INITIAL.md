@@ -8,14 +8,14 @@ training, input masking, model, evaluation and clustering computation is unchang
 The clustering notebook's evaluation cell additionally calls spatial_metrics.py;
 all other notebook cells are unchanged. README includes archive and revision usage.
 
-The authorized revision additions comprise independent EDM preparation, actual E1
+The authorized revision additions comprise independent EDM preparation, actual EDM
 fine-tuning/inference and recovery evaluation dependencies; MAGIC, MIST, stLearn,
 GraphST/STAGATE/SEDR adapters and existing-prediction evaluation; reference-method
 adapters; original-zero proxy/marker evaluation; unknown-organ tissue handling and
 optional HD image resizing. No dedicated ablation, raw-control, sensitivity or
 gene-sparsity experiment runners are included.
 
-The E1 scientific implementations were taken from the actual research scripts.
+The EDM scientific implementations were taken from the actual research scripts.
 Release adaptations remove an unused scFoundation wildcard import, expose the
 preparation source paths and training-only gene-effect inputs, use project-relative
 baseline paths, remove the ablation CLI, provide annotation assembly from original
@@ -25,7 +25,7 @@ The original-zero analysis still requires matching raw reference counts.
 
 Validation: all Python and notebook code parses; nine EDM seed/ratio combinations
 match the original dependent_mask function exactly; a real H5AD masking roundtrip
-passes; recovery/spatial metric fixtures pass; shared E1 utility definitions are
+passes; recovery/spatial metric fixtures pass; shared EDM utility definitions are
 AST-identical to the original utility functions. Only the notebook evaluation cell
 changed. Full CUDA training, third-party baseline execution, real checkpoint loading
 and historical result reproduction have not been rerun. The documented historical

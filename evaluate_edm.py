@@ -58,16 +58,16 @@ def evaluate_metrics(true_exp_matrix, imputed_exp_matrix, mask, save_path):
 
 
 from pathlib import Path
-from experiments.e1.metrics import recovery_metrics, smooth
+from experiments.edm.metrics import recovery_metrics, smooth
 from spatial_smoothing import spatial_neighbors, complete_expression
-from experiments.e1.prepare import digest
+from experiments.edm.prepare import digest
 import json
 
 def dense(a):
     return a.X.toarray() if hasattr(a.X,'toarray') else np.asarray(a.X)
 
 if not Path(args.adata_path).exists():
-    from experiments.e1.prepare import materialize
+    from experiments.edm.prepare import materialize
     materialize(Path(args.adata_path).parent, args.adata_path)
 adata=sc.read_h5ad(args.adata_path)
 truth=sc.read_h5ad(args.truth_path)[adata.obs_names,adata.var_names].copy()

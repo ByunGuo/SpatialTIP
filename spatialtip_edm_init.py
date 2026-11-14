@@ -3,7 +3,7 @@ import torch
 from torchvision import transforms
 import timm
 import torch.nn as nn
-from stGPT_con_e1 import BertLMHeadModel
+from spatialtip_edm import BertLMHeadModel
 from transformers import BertConfig
 
 

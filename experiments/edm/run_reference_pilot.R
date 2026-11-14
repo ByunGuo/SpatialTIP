@@ -1,10 +1,10 @@
-# Independent E1 adapter: original algorithm sources remain unchanged.
+# Independent EDM adapter: original algorithm sources remain unchanged.
 args <- commandArgs(trailingOnly=TRUE)
 if (!(length(args) %in% c(4,5))) stop('Usage: run_reference_pilot.R ROOT INPUT OUT METHOD [smoke|pilot|formal]')
 mode <- if(length(args)==5) args[5] else 'smoke'
 if(!(mode %in% c('smoke','pilot','formal'))) stop('Invalid execution mode')
 root <- normalizePath(args[1]); input <- normalizePath(args[2]); out <- args[3]; method <- args[4]
-.libPaths(c(file.path(root,'experiments/e1/Rlib'), .libPaths()))
+.libPaths(c(file.path(root,'experiments/edm/Rlib'), .libPaths()))
 Sys.setenv(R_LIBS_USER=paste(.libPaths(),collapse=.Platform$path.sep))
 dir.create(out,recursive=TRUE,showWarnings=FALSE)
 set.seed(42)

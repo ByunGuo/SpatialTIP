@@ -94,7 +94,7 @@ def fit_training_effects(paths):
 def ensure_annotations():
     """Assemble existing DLPFC annotations without changing labels."""
     import pandas as pd
-    out = ROOT/'experiments/e1/reference_annotations/dlpfc_barcode_level_layer_map.tsv'
+    out = ROOT/'experiments/edm/reference_annotations/dlpfc_barcode_level_layer_map.tsv'
     if out.exists(): return out
     rows=[]
     for path in sorted((ROOT/'DLPFC').glob('*/*_truth.txt')):
@@ -134,7 +134,7 @@ def main():
     effects = fitted['effect']
     gamma = np.array([effects.get(g,0.) for g in target.var_names])
     held, info = dependent_mask(matrix(target),gamma,a.ratio,a.seed)
-    out = a.output or ROOT/f'experiments/e1/healthy_expression_smoke/expression_gene/{a.seed}/{a.sample}_{a.ratio}'
+    out = a.output or ROOT/f'experiments/edm/healthy_expression_smoke/expression_gene/{a.seed}/{a.sample}_{a.ratio}'
     out.mkdir(parents=True,exist_ok=False)
     save_npz(out/'heldout.npz',csr_matrix(held))
     (out/'gene_effect.json').write_text(json.dumps(fitted,indent=2))

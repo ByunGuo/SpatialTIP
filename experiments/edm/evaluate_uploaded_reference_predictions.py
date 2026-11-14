@@ -1,4 +1,4 @@
-"""Evaluate uploaded full-matrix reference predictions on frozen E1 masks."""
+"""Evaluate uploaded full-matrix reference predictions on frozen EDM masks."""
 import argparse
 import datetime
 import hashlib
@@ -10,7 +10,7 @@ import numpy as np
 import pandas as pd
 from scipy.sparse import issparse, load_npz
 
-from experiments.e1.metrics import recovery_metrics
+from experiments.edm.metrics import recovery_metrics
 
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -55,7 +55,7 @@ def main():
         prediction_path = args.prediction_dir / args.pattern.format(sample=sample)
         prediction = ad.read_h5ad(prediction_path)
         truth = ad.read_h5ad(ROOT / "hest_data/st_healthy_opus" / f"{sample}.h5ad")
-        mask_dir = ROOT / "experiments/e1/healthy_expression_smoke/expression_gene/42" / f"{sample}_{args.ratio}"
+        mask_dir = ROOT / "experiments/edm/healthy_expression_smoke/expression_gene/42" / f"{sample}_{args.ratio}"
         config = json.loads((mask_dir / "config.json").read_text())
         truth = truth[~truth.obs_names.isin(config["excluded_missing_patch_barcodes"])].copy()
 

@@ -1,22 +1,22 @@
-"""MAGIC baseline on frozen E1 inputs, following manuscript Scanpy-default protocol."""
+"""MAGIC baseline on frozen EDM inputs, following manuscript Scanpy-default protocol."""
 import argparse,datetime,hashlib,json,time
 from pathlib import Path
 import numpy as np,pandas as pd,scanpy as sc
 import scanpy.external as sce
 from scipy.sparse import load_npz
-from experiments.e1.prepare import materialize,digest
-from experiments.e1.metrics import recovery_metrics
+from experiments.edm.prepare import materialize,digest
+from experiments.edm.metrics import recovery_metrics
 ROOT=Path(__file__).resolve().parents[2]
 def dense(x):return x.toarray() if hasattr(x,'toarray') else np.asarray(x)
 def main():
  p=argparse.ArgumentParser();p.add_argument('--samples',nargs='+',default=['MISC1','MISC2','MISC5','MISC9','MISC10']);p.add_argument('--ratio',type=float,choices=[0.2,0.4,0.6],default=0.4);p.add_argument('--smoke',action='store_true');p.add_argument('--n-jobs',type=int,default=8);p.add_argument('--output-dir',type=Path);a=p.parse_args()
- out=a.output_dir or ROOT/f'experiments/e1/runs/healthy_magic_expression_gene_42_{a.ratio}';out.mkdir(parents=True,exist_ok=True);rows=[];state={'status':'running','samples':a.samples,'started_utc':datetime.datetime.now(datetime.timezone.utc).isoformat(),'protocol':{'implementation':'scanpy.external.pp.magic','scanpy':sc.__version__,'magic':'3.0.0','parameters':{'knn':5,'decay':1,'knn_max':None,'t':3,'n_pca':100,'solver':'exact','knn_dist':'euclidean','random_state':42},'input':f'same frozen expression-dependent masked input used by SpatialTIP; ratio={a.ratio}','postprocessing':'none'}}
+ out=a.output_dir or ROOT/f'experiments/edm/runs/healthy_magic_expression_gene_42_{a.ratio}';out.mkdir(parents=True,exist_ok=True);rows=[];state={'status':'running','samples':a.samples,'started_utc':datetime.datetime.now(datetime.timezone.utc).isoformat(),'protocol':{'implementation':'scanpy.external.pp.magic','scanpy':sc.__version__,'magic':'3.0.0','parameters':{'knn':5,'decay':1,'knn_max':None,'t':3,'n_pca':100,'solver':'exact','knn_dist':'euclidean','random_state':42},'input':f'same frozen expression-dependent masked input used by SpatialTIP; ratio={a.ratio}','postprocessing':'none'}}
  def save():
   state['updated_utc']=datetime.datetime.now(datetime.timezone.utc).isoformat();(out/'execution_status.json').write_text(json.dumps(state,indent=2))
  save()
  try:
   for sample in a.samples:
-   start=time.time();folder=ROOT/f'experiments/e1/healthy_expression_smoke/expression_gene/42/{sample}_{a.ratio}';inp=materialize(folder);ad=sc.read_h5ad(inp);truth=sc.read_h5ad(ROOT/f'hest_data/st_healthy_opus/{sample}.h5ad')[ad.obs_names,ad.var_names];held=load_npz(folder/'heldout.npz').toarray();assert held.dtype==bool and not (dense(ad.X)[held]!=0).any()
+   start=time.time();folder=ROOT/f'experiments/edm/healthy_expression_smoke/expression_gene/42/{sample}_{a.ratio}';inp=materialize(folder);ad=sc.read_h5ad(inp);truth=sc.read_h5ad(ROOT/f'hest_data/st_healthy_opus/{sample}.h5ad')[ad.obs_names,ad.var_names];held=load_npz(folder/'heldout.npz').toarray();assert held.dtype==bool and not (dense(ad.X)[held]!=0).any()
    if a.smoke:ad=ad[:128,:256].copy();truth=truth[:128,:256].copy();held=held[:128,:256]
    result=sce.pp.magic(ad,knn=5,decay=1,knn_max=None,t=3,n_pca=min(100,ad.n_obs-1,ad.n_vars-1),solver='exact',knn_dist='euclidean',random_state=42,n_jobs=a.n_jobs,verbose=True,copy=True)
    y=dense(result.X);z=dense(truth.X);assert y.shape==z.shape and np.isfinite(y).all();metric=recovery_metrics(z,y,held);record={'sample':sample,'Method':'MAGIC',**metric,'elapsed_seconds':time.time()-start};rows.append(record)
