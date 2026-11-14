@@ -1,6 +1,3 @@
-# Copyright 2018 The Google AI Language Team Authors and The HuggingFace Inc. team.
-# Copyright (c) 2018 NVIDIA CORPORATION. All rights reserved.
-# Adapted for SpatialTIP; see LICENSE and THIRD_PARTY_NOTICES.md.
 import math
 import os
 import warnings
@@ -8,7 +5,7 @@ from dataclasses import dataclass
 from transformers.utils import logging
 from typing import Optional, Tuple, Dict, Any
 import torch
-from torch import Tensor, device, dtype, nn
+from torch import Tensor, device, nn
 import torch.utils.checkpoint
 from torch import nn
 from torch.nn import CrossEntropyLoss
@@ -16,28 +13,15 @@ import torch.nn.functional as F
 from einops import rearrange, repeat
 from functools import partial
 from transformers.activations import ACT2FN
-from transformers.file_utils import (
-    ModelOutput,
-)
 from transformers.modeling_outputs import (
     BaseModelOutputWithPastAndCrossAttentions,
     BaseModelOutputWithPoolingAndCrossAttentions,
     CausalLMOutputWithCrossAttentions,
-    MaskedLMOutput,
-    MultipleChoiceModelOutput,
-    NextSentencePredictorOutput,
-    QuestionAnsweringModelOutput,
-    SequenceClassifierOutput,
-    TokenClassifierOutput,
 )
 from transformers.modeling_utils import apply_chunking_to_forward, PreTrainedModel
-from transformers.utils import logging
 from transformers.models.bert.configuration_bert import BertConfig
 logger = logging.get_logger(__name__)
-try:
-    from flash_attn import flash_attn_func
-except (ImportError, OSError):
-    flash_attn_func = None
+from flash_attn import flash_attn_func
 
 
 class GeneEncoder(nn.Module):
@@ -78,8 +62,6 @@ class TissueEncoder(nn.Module):
         return x
     
 
-# Copyright (c) 2023 BioMap (Beijing) Intelligence Technology Limited.
-# Auto-discretization embedding adapted from scFoundation (Apache-2.0).
 class AutoDiscretizationEmbedding2(nn.Module):
     """
     This class implements the auto-discretization embedding for gene expression data.
@@ -195,7 +177,6 @@ class BertSelfAttention(nn.Module):
         self.is_cross_attention = is_cross_attention
 
         self.use_flash = True
-        self.attention_backend = getattr(config, "attention_backend", "auto")
 
 
     def forward(
@@ -225,38 +206,25 @@ class BertSelfAttention(nn.Module):
         query_layer = self.transpose_for_scores(mixed_query_layer)
         past_key_value = (key_layer, value_layer)
 
-        can_flash = (flash_attn_func is not None and query_layer.is_cuda
-                     and query_layer.dtype in (torch.float16, torch.bfloat16))
-        use_flash = (self.use_flash and self.attention_backend in ("auto", "flash")
-                     and can_flash and not output_attentions)
-        if (self.use_flash and self.attention_backend == "flash"
-                and not can_flash and not output_attentions):
-            raise RuntimeError("FlashAttention requires flash-attn, CUDA and fp16/bfloat16. Use attention_backend=auto or sdpa otherwise.")
-
-        if use_flash:
+        if self.use_flash:
             query_layer = query_layer.permute(0, 2, 1, 3).contiguous()
             key_layer = key_layer.permute(0, 2, 1, 3).contiguous()
             value_layer = value_layer.permute(0, 2, 1, 3).contiguous()
 
             context_layer = flash_attn_func(query_layer, key_layer, value_layer)
-        elif not output_attentions and self.attention_backend != "math":
-            # Same noncausal, zero-dropout attention as the original flash call.
-            context_layer = F.scaled_dot_product_attention(
-                query_layer, key_layer, value_layer,
-                attn_mask=attention_mask.to(value_layer.dtype) if attention_mask is not None else None,
-                dropout_p=0.0, is_causal=False,
-            ).permute(0, 2, 1, 3).contiguous()
         else:
-            # A large additive mask in fp16 would erase small differences in
-            # QK scores, including during attention export under autocast.
-            with torch.autocast(device_type=query_layer.device.type, enabled=False):
-                attention_scores = torch.matmul(
-                    query_layer.float(), key_layer.float().transpose(-1, -2)
-                ) / math.sqrt(self.attention_head_size)
-                if attention_mask is not None:
-                    attention_scores = attention_scores + attention_mask.float()
-                attention_probs = nn.Softmax(dim=-1)(attention_scores)
-                context_layer = torch.matmul(attention_probs, value_layer.float()).to(value_layer.dtype)
+            if attention_mask is not None:
+                attention_mask = attention_mask.to(dtype=value_layer.dtype)  # fp16 compatibility
+
+            attention_scores = torch.matmul(query_layer, key_layer.transpose(-1, -2))
+            attention_scores = attention_scores / math.sqrt(self.attention_head_size)
+
+            if attention_mask is not None:
+                attention_scores = attention_scores + attention_mask
+
+            # Normalize the attention scores to probabilities.
+            attention_probs = nn.Softmax(dim=-1)(attention_scores)
+            context_layer = torch.matmul(attention_probs, value_layer)
             context_layer = context_layer.permute(0, 2, 1, 3).contiguous()
 
         new_context_layer_shape = context_layer.size()[:-2] + (self.all_head_size,)
@@ -430,9 +398,9 @@ class BertLayer(nn.Module):
             )
         outputs = (layer_output,) + outputs
 
-        outputs = outputs + (present_key_value,)  
-        # 第一个元素是layer_output,第二个元素是attention_output,第三个元素是cross_attention_output，最后一个元素是present_key_value
-        
+        outputs = outputs + (present_key_value,)
+        # First element: layer_output, second: attention_output, third: cross_attention_output, last: present_key_value
+
         return outputs
 
     def feed_forward_chunk(self, attention_output):
@@ -482,7 +450,7 @@ class BertEncoder(nn.Module):
 
             past_key_value = past_key_values[i] if past_key_values is not None else None
 
-            if getattr(self.config, "gradient_checkpointing", False) and self.training: # 梯度检查点，基本不用
+            if getattr(self.config, "gradient_checkpointing", False) and self.training:  # Gradient checkpointing, rarely used
 
                 if use_cache:
                     logger.warn(
@@ -871,15 +839,15 @@ class BertLMHeadModel(BertPreTrainedModel):
         prediction_scores = self.predict_head(sequence_output)  # [batch_size, seq_length, 1]
 
         if return_logits:
-            return prediction_scores[:, 1:, :].contiguous()
+            return prediction_scores[:, :-1, :].contiguous()
 
-        # All public inference paths return genes only, with no CLS prediction.
-        prediction_scores = prediction_scores.squeeze(-1)[:, 1:]
+        prediction_scores = prediction_scores.squeeze(-1)
         
         lm_loss = None
         if labels is not None:
             labels = labels.contiguous()
-            mask = (gene_exp == -1) & (labels >= 0)  # Exclude external held-out targets.
+            mask = (gene_exp == -1)  # -1代表mask
+            prediction_scores = prediction_scores[:, 1:]
             mask_prediction_scores = prediction_scores * mask
             mask_labels = labels * mask
 

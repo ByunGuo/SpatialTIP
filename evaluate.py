@@ -1,128 +1,152 @@
-"""Evaluate explicitly held-out nonzeros, with optional expression completion/smoothing."""
-
+import scanpy as sc
+import os
 import argparse
-import csv
-import hashlib
-import json
-from pathlib import Path
+import numpy as np
+import pandas as pd
+import scipy as sp
+from utils import Cal_Spatial_Net
 
 
-def recovery_metrics(truth, prediction, heldout):
-    import numpy as np
+parser = argparse.ArgumentParser(description='Evaluate imputation metrics')
+parser.add_argument('--sample', type=str, default='MISC3', help='sample name')
+parser.add_argument('--mask_prob', type=float, default=0.2, help='mask probability')
+parser.add_argument('--seed', type=int, default=2024, help='random seed')
 
-    truth = np.asarray(truth, dtype=np.float64)
-    prediction = np.asarray(prediction, dtype=np.float64)
-    heldout = np.asarray(heldout)
-    if truth.shape != prediction.shape or heldout.shape != truth.shape or heldout.dtype != bool:
-        raise ValueError("Aligned matrices and a boolean True=heldout mask are required.")
-    if not heldout.any() or (truth[heldout] <= 0).any():
-        raise ValueError("Evaluation requires held-out observed nonzero entries.")
-    if not np.isfinite(truth[heldout]).all() or not np.isfinite(prediction[heldout]).all():
-        raise ValueError("Nonfinite truth or prediction at held-out entries.")
-    errors = truth[heldout] - prediction[heldout]
-    result = {"RMSE": float(np.sqrt(np.mean(errors ** 2))),
-              "MAE": float(np.mean(np.abs(errors))), "heldout_count": int(heldout.sum())}
-    target = np.where(heldout, truth, 0)
-    predicted = np.where(heldout, prediction, 0)
-    for name, axis in (("spot", 1), ("gene", 0)):
-        counts = heldout.sum(axis=axis, keepdims=True)
-        target_centered = (target - target.sum(axis=axis, keepdims=True) / np.maximum(counts, 1)) * heldout
-        prediction_centered = (predicted - predicted.sum(axis=axis, keepdims=True) / np.maximum(counts, 1)) * heldout
-        denominator = np.sqrt((target_centered ** 2).sum(axis=axis) * (prediction_centered ** 2).sum(axis=axis))
-        valid = (counts.reshape(-1) >= 2) & (denominator > 0)
-        correlation = (target_centered * prediction_centered).sum(axis=axis)[valid] / denominator[valid]
-        norm = np.sqrt((target ** 2).sum(axis=axis) * (predicted ** 2).sum(axis=axis))
-        valid_cosine = norm > 0
-        cosine = (target * predicted).sum(axis=axis)[valid_cosine] / norm[valid_cosine]
-        for metric, values in (("PCC", correlation), ("CSS", cosine)):
-            values = values[np.isfinite(values)]
-            result[f"{name}_{metric}"] = float(values.mean()) if len(values) else None
-            result[f"{name}_{metric}_valid_count"] = len(values)
-    return result
+# Data paths
+parser.add_argument('--data_dir', type=str, default='hest_data', help='data directory')
+parser.add_argument('--masked_data_subdir', type=str, default=None, help='masked data subdirectory (default: st_healthy_6k_masked_{seed})')
+parser.add_argument('--original_data_subdir', type=str, default='st_healthy_6k_v1', help='original data subdirectory')
+parser.add_argument('--imputed_data_dir', type=str, default=None, help='imputed data directory (default: Result/predicted_healthy_6k_masked_{seed})')
+parser.add_argument('--masks_dir', type=str, default=None, help='masks directory (default: hest_data/masks_healthy_6k_{seed})')
+
+# Output paths
+parser.add_argument('--output_dir', type=str, default=None, help='output directory (default: Metrices/healthy_6k_{seed})')
+
+# Spatial smoothing
+parser.add_argument('--no_spatial_smoothing', action='store_true', help='disable spatial neighbor smoothing')
+parser.add_argument('--rad_cutoff', type=float, default=150, help='radius cutoff for spatial network')
+
+
+def evaluate_metrics(true_exp_matrix, imputed_exp_matrix, mask, save_path):
+    """Calculate evaluation metrics for imputation."""
+    mask = mask == 0
+
+    RMSE = np.sqrt(np.mean((true_exp_matrix[mask] - imputed_exp_matrix[mask]) ** 2))
+    MAE = np.mean(np.abs(true_exp_matrix[mask] - imputed_exp_matrix[mask]))
+
+    # Spot-wise Pearson Correlation Coefficient
+    spot_corr = np.array([
+        np.corrcoef(imputed_exp_matrix[i, mask[i]], true_exp_matrix[i, mask[i]])[0, 1]
+        for i in range(imputed_exp_matrix.shape[0])
+    ])
+    spot_corr = spot_corr[~np.isnan(spot_corr)]
+
+    # Spot-wise Cosine Similarity
+    spot_cosine = np.array([
+        np.dot(imputed_exp_matrix[i, mask[i]], true_exp_matrix[i, mask[i]]) /
+        (np.linalg.norm(imputed_exp_matrix[i, mask[i]]) * np.linalg.norm(true_exp_matrix[i, mask[i]]))
+        for i in range(imputed_exp_matrix.shape[0])
+    ])
+    spot_cosine = spot_cosine[~np.isnan(spot_cosine)]
+
+    # Gene-wise Pearson Correlation Coefficient
+    gene_corr = np.array([
+        np.corrcoef(imputed_exp_matrix[:, i][mask[:, i]], true_exp_matrix[:, i][mask[:, i]])[0, 1]
+        for i in range(imputed_exp_matrix.shape[1])
+    ])
+    gene_corr = gene_corr[~np.isnan(gene_corr)]
+
+    # Gene-wise Cosine Similarity
+    gene_cosine = np.array([
+        np.dot(imputed_exp_matrix[:, i][mask[:, i]], true_exp_matrix[:, i][mask[:, i]]) /
+        (np.linalg.norm(imputed_exp_matrix[:, i][mask[:, i]]) * np.linalg.norm(true_exp_matrix[:, i][mask[:, i]]))
+        for i in range(imputed_exp_matrix.shape[1])
+    ])
+    gene_cosine = gene_cosine[~np.isnan(gene_cosine)]
+
+    evaluation_results = pd.DataFrame({
+        'RMSE': [RMSE],
+        'MAE': [MAE],
+        'Spot-wise PCC': [np.mean(spot_corr)],
+        'Spot-wise Cosine Similarity': [np.mean(spot_cosine)],
+        'Gene-wise PCC': [np.mean(gene_corr)],
+        'Gene-wise Cosine Similarity': [np.mean(gene_cosine)]
+    })
+    evaluation_results.to_csv(save_path, index=False)
+
+    return evaluation_results
+
+
+def apply_spatial_smoothing(imputed_matrix, adata, rad_cutoff=150):
+    """Apply spatial neighbor smoothing to imputed matrix."""
+    spatial_net = Cal_Spatial_Net(adata, rad_cutoff=rad_cutoff, model='Radius')
+    neighbors = {}
+    for _, row in spatial_net.iterrows():
+        spot1, spot2 = row['Spot1'], row['Spot2']
+        neighbors.setdefault(spot1, set()).add(spot2)
+        neighbors.setdefault(spot2, set()).add(spot1)
+
+    smoothed_matrix = imputed_matrix.copy()
+    for spot, neighbor_spots in neighbors.items():
+        neighbor_spots = [int(spot) for spot in neighbor_spots]
+        smoothed_matrix[int(spot)] = smoothed_matrix[neighbor_spots].mean(axis=0)
+
+    return smoothed_matrix
 
 
 def main():
-    parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--truth", required=True)
-    parser.add_argument("--imputed", required=True, help="Dense predictions or another explicitly chosen prediction stage")
-    parser.add_argument("--heldout", required=True, help="Boolean sparse NPZ in the truth H5AD axis order")
-    parser.add_argument("--output", required=True, help="New CSV file")
-    parser.add_argument("--input", help="Masked input, required for completion and optional smoothing")
-    parser.add_argument("--smoothing", choices=("none", "radius", "knn"), default="none")
-    parser.add_argument("--radius", type=float, default=150.0)
-    parser.add_argument("--knn-neighbors", type=int, default=10)
     args = parser.parse_args()
-    import anndata as ad
-    import numpy as np
-    from scipy import sparse
 
-    inputs = [Path(getattr(args, key)).expanduser().resolve() for key in ("truth", "imputed", "heldout")]
-    output = Path(args.output).expanduser().resolve()
-    metadata_path = output.with_suffix(".metadata.json")
-    if args.input:
-        inputs.append(Path(args.input).expanduser().resolve())
-    if output in inputs or metadata_path in inputs or output == metadata_path:
-        raise ValueError("Output cannot overwrite an input file.")
-    for path in (output, metadata_path):
-        if path.exists():
-            raise FileExistsError("Refusing to overwrite " + str(path))
-    truth = ad.read_h5ad(inputs[0])
-    if not truth.obs_names.is_unique or not truth.var_names.is_unique:
-        raise ValueError("Truth identifiers must be unique.")
+    print('Start evaluation!')
+    print(f'Sample: {args.sample}')
+    print(f'Mask probability: {args.mask_prob}')
 
-    def align(path):
-        data = ad.read_h5ad(path)
-        if not data.obs_names.is_unique or not data.var_names.is_unique:
-            raise ValueError("Prediction/input identifiers must be unique.")
-        if set(data.obs_names) != set(truth.obs_names) or set(data.var_names) != set(truth.var_names):
-            raise ValueError("Prediction/input must have exactly the truth's spot and gene sets.")
-        return data[truth.obs_names, truth.var_names].copy()
+    # Set default paths
+    masked_subdir = args.masked_data_subdir or f'st_healthy_6k_masked_{args.seed}'
+    imputed_dir = args.imputed_data_dir or f'Result/predicted_healthy_6k_masked_{args.seed}'
+    masks_dir = args.masks_dir or f'hest_data/masks_healthy_6k_{args.seed}'
+    output_dir = args.output_dir or f'Metrices/healthy_6k_{args.seed}'
 
-    def dense(data):
-        return data.X.toarray() if sparse.issparse(data.X) else np.asarray(data.X)
+    # Load data
+    masked_adata_path = os.path.join(args.data_dir, masked_subdir, f'{args.sample}_{args.mask_prob}.h5ad')
+    original_adata_path = os.path.join(args.data_dir, args.original_data_subdir, f'{args.sample}.h5ad')
+    imputed_adata_path = os.path.join(imputed_dir, f'{args.sample}_{args.mask_prob}.h5ad')
+    mask_path = os.path.join(masks_dir, f'{args.sample}_{args.mask_prob}_mask.npz')
 
-    predictions = dense(align(inputs[1]))
-    target = dense(truth)
-    heldout = sparse.load_npz(inputs[2]).toarray()
-    mask_metadata = inputs[2].with_suffix(".metadata.json")
-    if mask_metadata.is_file():
-        saved = json.loads(mask_metadata.read_text(encoding="utf-8"))
-        expected = saved.get("truth_sha256")
-        if expected and hashlib.sha256(inputs[0].read_bytes()).hexdigest() != expected:
-            raise ValueError("Truth SHA256 does not match the held-out mask metadata.")
-    rows = [{"output": "supplied_prediction", **recovery_metrics(target, predictions, heldout)}]
-    if args.input:
-        from clustering import complete_expression, smooth_expression
-        masked_input = align(inputs[3])
-        observed = dense(masked_input)
-        if heldout.dtype != bool or heldout.shape != observed.shape or np.any(observed[heldout] != 0):
-            raise ValueError("Held-out entries must be hidden as zero in --input.")
-        completed = complete_expression(observed, predictions)
-        rows.append({"output": "completed", **recovery_metrics(target, completed, heldout)})
-        if args.smoothing != "none":
-            coordinates = np.asarray(masked_input.obsm["spatial"], dtype=float)
-            if coordinates.shape != (truth.n_obs, 2) or not np.isfinite(coordinates).all():
-                raise ValueError("Input needs finite two-dimensional spatial coordinates.")
-            smoothed = smooth_expression(completed, coordinates, args.smoothing, args.radius, args.knn_neighbors)
-            rows.append({"output": "smoothed", **recovery_metrics(target, smoothed, heldout)})
-    elif args.smoothing != "none":
-        raise ValueError("--smoothing requires --input, so observed expression can be retained first.")
-    output.parent.mkdir(parents=True, exist_ok=True)
-    with output.open("x", encoding="utf-8", newline="") as stream:
-        writer = csv.DictWriter(stream, fieldnames=list(rows[0]))
-        writer.writeheader()
-        writer.writerows(rows)
-    metadata = {"mask_definition": "boolean True=heldout, indexed by the truth H5AD order",
-                "metric_definition": "RMSE/MAE over pooled heldout entries; spot/gene PCC and CSS are means over valid vectors only.",
-                "smoothing": args.smoothing, "smoothing_update": "sequential_including_self",
-                "radius": args.radius, "knn_neighbors": args.knn_neighbors,
-                "inputs_sha256": {key: hashlib.sha256(path.read_bytes()).hexdigest()
-                                  for key, path in zip(("truth", "imputed", "heldout", "input"), inputs)}}
-    with metadata_path.open("x", encoding="utf-8") as stream:
-        json.dump(metadata, stream, indent=2)
-        stream.write("\n")
-    print(json.dumps(rows, indent=2, allow_nan=False))
+    print(f'Masked data: {masked_adata_path}')
+    print(f'Original data: {original_adata_path}')
+    print(f'Imputed data: {imputed_adata_path}')
+    print(f'Mask file: {mask_path}')
+
+    adata_masked = sc.read_h5ad(masked_adata_path)
+    adata_raw = sc.read_h5ad(original_adata_path)
+    adata_imputed = sc.read_h5ad(imputed_adata_path)
+
+    # Load mask
+    mask = sp.sparse.load_npz(mask_path).toarray()
+
+    # Prepare matrices
+    masked_matrix = adata_masked.X.toarray() if hasattr(adata_masked.X, 'toarray') else adata_masked.X
+    raw_matrix = adata_raw.X.toarray() if hasattr(adata_raw.X, 'toarray') else adata_raw.X
+    imputed_matrix = adata_imputed.X.copy() if hasattr(adata_imputed.X, 'copy') else np.array(adata_imputed.X)
+
+    # Combine imputed values with original non-masked values
+    zero_mask = masked_matrix == 0
+    imputed_matrix = np.where(zero_mask, imputed_matrix, masked_matrix)
+
+    # Apply spatial smoothing (enabled by default)
+    if not args.no_spatial_smoothing:
+        print('Applying spatial smoothing...')
+        imputed_matrix = apply_spatial_smoothing(imputed_matrix, adata_masked, args.rad_cutoff)
+
+    # Evaluate metrics
+    os.makedirs(output_dir, exist_ok=True)
+    output_path = os.path.join(output_dir, f'{args.sample}_{args.mask_prob}_evaluation_metrics.csv')
+
+    results = evaluate_metrics(raw_matrix, imputed_matrix, mask, output_path)
+    print(f'\nEvaluation results saved to: {output_path}')
+    print(results.to_string(index=False))
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     main()

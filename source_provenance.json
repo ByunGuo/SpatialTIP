@@ -1,94 +1,44 @@
 {
-  "schema_version": 1,
-  "prepared_on": "2026-11-04",
-  "release_status": "Prepared locally; not uploaded or pushed.",
+  "prepared_on": "2026-11-14",
+  "release_status": "Original-logic source release.",
   "upstream": {
     "repository": "https://github.com/Yoyiming/SpatialTIP",
     "branch": "master",
     "commit": "d2d076f0f2aa5195df926bbf916b83976a22d529",
     "license": "Apache-2.0"
   },
-  "research_source_files": [
-    {
-      "relative_path": "stGPT_con_e1.py",
-      "sha256": "48e909ae61253768e077f13b10959dbce6da65d6ecf92eb64f8fb201910484db"
-    },
-    {
-      "relative_path": "stGPT_model_con.py",
-      "sha256": "80a579532a236506fd3ad219f90ffb71239b450218b170e55203000ad894f3af"
-    },
-    {
-      "relative_path": "stGPT_init_con.py",
-      "sha256": "943060d9b654d8969b33a1b84d025413dca3b58c4ad660fbe3897f0fd2f29a3f"
-    },
-    {
-      "relative_path": "dataset_e1.py",
-      "sha256": "2bfc8716c56f1863285b2ac1f3eb1e35e51859211e7d16a09528de9abadf6c1c"
-    },
-    {
-      "relative_path": "utils.py",
-      "sha256": "0bc89a5a091cd3d270d6ede03694de13986e4a49656cf9a85ee4f233f52d1af0"
-    },
-    {
-      "relative_path": "finetune.py",
-      "sha256": "ac0a1ca788505994f1aaad2ed7a779edb5f3fb83f47ab196179fb4f02aea1f13"
-    },
-    {
-      "relative_path": "impute_evaluate_e1.py",
-      "sha256": "b763e310b8e0c9b26ab7bdf806c488789d2f7dbee182be6c2c554ddcb4b49e5e"
-    },
-    {
-      "relative_path": "evaluate.py",
-      "sha256": "265c039dc44e3e472407cddf11263f59e37a03ecbbb586de75e2a20e816555fd"
-    },
-    {
-      "relative_path": "preprocess_hest_healthy.py",
-      "sha256": "fd754fb595d3a673314493773a137d17be50f4c55ee1baf7af556e9a5bdc451d"
-    },
-    {
-      "relative_path": "preprocess_hest_cancer.py",
-      "sha256": "6936d3e455089c23b9b84ef735871dd3cc3c785f8f25ac29e567a75bc866be77"
-    },
-    {
-      "relative_path": "output_attentions.py",
-      "sha256": "8cef6eff510e6fdc57b9ca9ee4c06c34a50e0c04d30066f56794787749d13857"
-    },
-    {
-      "relative_path": "attention_analysis.py",
-      "sha256": "a163a5021f7a04ca62e12bb395778cac4a183b3558869eeb65956abd32f65c14"
-    }
+  "original_files": 46,
+  "identical_to_original": 41,
+  "modified_original_files": [
+    "finetune.py",
+    "finetune_masked.py",
+    "impute.py",
+    "impute_masked.py",
+    "README.md"
   ],
-  "core_mapping": {
-    "spatialtip.py": "stGPT_con_e1.py (same parameter structure; external heldout loss exclusion)",
-    "spatialtip_model.py": "stGPT_model_con.py (legacy stGPT parameter namespace retained)",
-    "spatialtip_init.py": "stGPT_init_con.py (unused external model-loader dependency removed)",
-    "dataset.py": "Generalized barcode-aligned dataset adapter",
-    "train.py": "Shared parameterized training engine; independent periodic learning-rate formula",
-    "impute.py": "Parameterized complete prediction export; explicit input-mask modes",
-    "evaluate.py": "Generalized heldout recovery metrics; no experiment orchestration",
-    "clustering.py": "Explicit completion, sequential spatial integration, PCA/mclust and label refinement"
-  },
-  "retained_method_details": [
-    "UNI ViT-L architecture, first 18 blocks frozen and final 6 trainable",
-    "Six-layer gene decoder defaults and unchanged legacy parameter names/shapes",
-    "Separate zero/nonzero training MLM; external heldout targets excluded",
-    "Full batch-by-gene mean reconstruction loss and contrastive coefficient 0.5",
-    "Original cross-rank gather convention without remote-rank gradients",
-    "Pretraining 90:10 and target fine-tuning 80:20 spot splits",
-    "Warmup/cosine restarts: pretraining cycle40/warmup5, fine-tuning cycle30/warmup2, minimum LR0.00005 and peak decay0.98",
-    "Original nonzeros retained before spatial expression integration; refine30 available"
+  "removed_reorganized_files": [
+    "attention_network.py",
+    "clustering.py",
+    "configs/model.example.json",
+    "examples/target_samples.csv",
+    "examples/train_samples.csv",
+    "mask_expression.py",
+    "output_attentions.py",
+    "preprocess.py",
+    "requirements.txt",
+    "runtime.py"
   ],
-  "explicit_release_changes": [
-    "No embedded credentials, import-time downloads, fixed workstation paths or fixed CUDA ordinal",
-    "Core public module names unified; old module./spatialtip. checkpoint prefixes normalized with strict tensor loading",
-    "Default inference zeros->mask; legacy nonzero-hiding remains an explicit input-mask option",
-    "Inference without labels omits the CLS prediction",
-    "Optional FlashAttention and SDPA fallback; explicit attention scores calculated in float32 to preserve precision under autocast",
-    "Deterministic NEW vocabulary fitting; frozen vocabulary IDs preserved during transform",
-    "Full batches, fixed validation RNG, output protection, new checkpoint vocabulary hash and configuration metadata",
-    "Deterministic spot-index rule for exact spatial-distance ties; no bitwise historical tie guarantee"
+  "executable_changes": "Checkpoint namespace compatibility only: module./stGPT. to original spatialtip. keys.",
+  "validation": [
+    "All restored Python files AST-parse",
+    "Checkpoint key translation preserves original public keys and tensor object identities"
   ],
-  "validation": {
+  "not_validated": [
+    "Full-size GPU execution",
+    "Real checkpoint restoration",
+    "Historical metric reproduction"
+  ],
+  "prior_reorganized_release_validation": {
     "environment": {
       "os": "Windows",
       "python": "3.11.18",
@@ -126,161 +76,206 @@
       "Real HEST network download; only its CLI/API arguments were checked"
     ]
   },
-  "omitted": [
-    "Supplementary experiment runners, baseline extensions, ablation and sensitivity scripts",
-    "Manuscripts, reviewer materials, plots, logs, temporary scripts and test fixtures",
-    "Datasets, generated results, model weights and unverified vocabulary/tissue mappings",
-    "Unused scBERT/scFoundation source distributions and private authentication material"
-  ],
-  "resource_status": "Current research data/UNI/checkpoint links refer to an unavailable external drive; no old public vocabulary was substituted.",
   "release_files": [
     {
       "relative_path": ".gitattributes",
-      "bytes": 119,
       "sha256": "ad87dc4443626559de97d6ac20d01c18b1266e3f503ccb15a06beb381ea10eaa"
     },
     {
       "relative_path": ".gitignore",
-      "bytes": 610,
       "sha256": "562cd7a74da14e875251ca95a8910094f4dd32d5109b08d0429e6c75c0feb6c9"
     },
     {
-      "relative_path": "attention_network.py",
-      "bytes": 2348,
-      "sha256": "2cc5ce419e2574e7c8419e38c0b724f579b3b3cc38e4606d2132bd0c3bca4fb5"
-    },
-    {
       "relative_path": "CHANGES_FROM_INITIAL.md",
-      "bytes": 17543,
-      "sha256": "6446578b7b084077f2808245c36f6f9c15d961386b337267efe7defbd67ed4c6"
-    },
-    {
-      "relative_path": "clustering.py",
-      "bytes": 11975,
-      "sha256": "624b0922d2f20a825de87fe15d6f09d11de6da1f2b8b7d0e567bd81d292370a1"
-    },
-    {
-      "relative_path": "configs/model.example.json",
-      "bytes": 287,
-      "sha256": "51477d4a42497a5371772f7dedb25351c898b52d85878cfb5b46c1bbedd7c31a"
+      "sha256": "573be5215ac4612657b4cec8f0c3601c35fd7285c2bd02f24794286ce2b191a9"
     },
     {
       "relative_path": "dataset.py",
-      "bytes": 6480,
-      "sha256": "8ba7501c73ccc4d461978e7ae8da751f1f9da28909cd792fe06cc957f615ff6b"
+      "sha256": "a7d8874b389eda0ea337967ca5138b68034c1ab54898ae909cbd8611f4f6a070"
     },
     {
       "relative_path": "environment.yml",
-      "bytes": 220,
-      "sha256": "33c7f0d6c558d236ba89b2ce83b5d89a75e8f8c10e6ff95b12a8bfc82597c5ac"
+      "sha256": "05690296b168ee942728e8d11bea779b400fcafbded841847aecde345171e056"
     },
     {
       "relative_path": "evaluate.py",
-      "bytes": 7294,
-      "sha256": "a2539dc4bedd996c2835a46e1c597aabb899b6865e17035d899a13c940c97abf"
-    },
-    {
-      "relative_path": "examples/target_samples.csv",
-      "bytes": 99,
-      "sha256": "a51df8ff33ad46a284cb05dbe5f216813467ad42217f109af687bd30bf6a07c4"
-    },
-    {
-      "relative_path": "examples/train_samples.csv",
-      "bytes": 166,
-      "sha256": "bb32452e2f7304cc4caa69f387e75aa171eddf3bf3d2176dde684264ba5d9026"
+      "sha256": "a938f0a014454e0042068d71d3afcd14f4aaab36a68397e6d945d18dc95d9dfc"
     },
     {
       "relative_path": "finetune.py",
-      "bytes": 1524,
-      "sha256": "2cf7f3ffb396fec9ad7dff71a2f4ca7150eaba601f2bd6f378d6debc6d555d4b"
+      "sha256": "0f16373588fceb7f4fdc530b39af4fe828c4a6c5c8ac23c4607bd9073f3ab1d1"
+    },
+    {
+      "relative_path": "finetune_masked.py",
+      "sha256": "73a3039ed9048146b2d60b38b1b70ab1c26c2234f378ca4f5b56bc9fab52cb7b"
     },
     {
       "relative_path": "hest_download.py",
-      "bytes": 1473,
-      "sha256": "e7a9ffeae1444c0a9e119695cf015e365ef1587fe60f906bb88c400e4e34a304"
+      "sha256": "c7b4892e5cfbf9a187e9c9dbb61deb1cb74f871836d068a722f48508ee72fa45"
     },
     {
       "relative_path": "impute.py",
-      "bytes": 7605,
-      "sha256": "989f66075d68b44dd490a4d8c4527a2d5486e10eb5ed164ff670f1752b5f3a6d"
+      "sha256": "a1b6e5893f76fd06bcd6634f320cd6b7c0f47577b0e95ed5790c79cce963ad0d"
+    },
+    {
+      "relative_path": "impute_masked.py",
+      "sha256": "6a83616fe92a0be2a1251bf91ffce230d7e7d408e903e63ef7a36b9491fd86ac"
     },
     {
       "relative_path": "LICENSE",
-      "bytes": 11357,
       "sha256": "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4"
     },
     {
-      "relative_path": "mask_expression.py",
-      "bytes": 3628,
-      "sha256": "e0ba97c6884069acc608009162908f517c5539d2fc01665e196a50f8f8330fec"
-    },
-    {
-      "relative_path": "output_attentions.py",
-      "bytes": 4157,
-      "sha256": "a9f8b1feae80481cc506cc2e4d58a1d2d10c987b00cd46a7718b7a15c5dd5899"
-    },
-    {
-      "relative_path": "preprocess.py",
-      "bytes": 9682,
-      "sha256": "65a66dfd5b8fbdfed32d48d868f9f7e093cb04e612a32b139309afeaa3153119"
-    },
-    {
       "relative_path": "README.md",
-      "bytes": 19382,
-      "sha256": "a580e39d5d3bc245fff1b7cab2fc7b881626a1101434b04dc5f84081d073ad41"
-    },
-    {
-      "relative_path": "requirements.txt",
-      "bytes": 326,
-      "sha256": "5684f3afb3629012f38884bd1fc14a4dbf12c8ac355f582e3e62a439f25c106e"
-    },
-    {
-      "relative_path": "runtime.py",
-      "bytes": 4995,
-      "sha256": "5475196f725e31ed735f965c7eefb862f039d343c6d82f3a23dbd485bc885b26"
+      "sha256": "760a9ed6a2bdf1a0b657c7ad4d333385b68e17dc8cafd3629096aaa4e4b66920"
     },
     {
       "relative_path": "spatialtip.py",
-      "bytes": 37692,
-      "sha256": "791048a0734ce1f60dc34b70f8110bf2a595e2160ed3f6ee633aa82f3b443bf4"
+      "sha256": "7146c502fb2ce0cd2cfcebe1be95333755590e7d65d9f233a53f763fa47cd2e1"
     },
     {
       "relative_path": "spatialtip_init.py",
-      "bytes": 2054,
-      "sha256": "72438029d4b4c0a2e33002c60e5851082a21514b30845f9fcfc648eec84d7a2e"
+      "sha256": "5ecf6a6b2299a6cc6a5e5b86f95b2e3abcba7084e6b74d7ff4331ca1b5903179"
     },
     {
       "relative_path": "spatialtip_model.py",
-      "bytes": 8366,
-      "sha256": "1160b2eb0fb6174ffc0b4426e2e2ca86f77a1b2917084b9e282f8960e70aad88"
+      "sha256": "3db0c80112803b77ae032179686c831e264f4191f60c9fa147001301f4f03cc9"
+    },
+    {
+      "relative_path": "spatial_domain_clustering.ipynb",
+      "sha256": "e799c4f612d1b92fe925b800b560a1eb4f5a9144e3205af5e67f04a15a34917b"
     },
     {
       "relative_path": "THIRD_PARTY_NOTICES.md",
-      "bytes": 3031,
-      "sha256": "845d685a701140dc3251307329a2670773c815de4be236fd52869417bbb16a22"
+      "sha256": "59d4202dd06147470ffa0e95d1478fef9476fc879bb63b72ebc766f2f41f8398"
     },
     {
       "relative_path": "train.py",
-      "bytes": 19850,
-      "sha256": "687dd6e2d90b8e51195d34d0f30ecedecdb8e7225b6bfc70b94a322cb48144ad"
+      "sha256": "8a501e19996baef2ae821365bf9171d25d1f60eb32a0c93dede351a3f7437ca4"
     },
     {
       "relative_path": "utils.py",
-      "bytes": 3898,
-      "sha256": "787cfb2d781d60e990b5ef07918d62b5af2ef6d8bf08694d0d5d466447d3af5d"
+      "sha256": "555146263035fc7b75e0f670e4a6e8b655147cceb4503e123ec8dd3f15880c33"
+    },
+    {
+      "relative_path": "DLPFC/151507/151507_truth.txt",
+      "sha256": "2d8f4b6ded41a7f421a9e0f227b4acb04a3a5f5778dd0e47cb72ea8e9ee3265f"
+    },
+    {
+      "relative_path": "DLPFC/151508/151508_truth.txt",
+      "sha256": "7097832a3342a2b7b863fd2a5bec790bcea12f08e215b0d876388cc0defbbe22"
+    },
+    {
+      "relative_path": "DLPFC/151509/151509_truth.txt",
+      "sha256": "f9da4d8d5c4c42b15251cba9064f6b58b1be28f1dfe6bb9d47d1544ec77fc887"
+    },
+    {
+      "relative_path": "DLPFC/151510/151510_truth.txt",
+      "sha256": "dd9b6729c352fa8d55a714c251789b7b7e1ced63c10b42947e069ef3efdfb712"
+    },
+    {
+      "relative_path": "DLPFC/151669/151669_truth.txt",
+      "sha256": "3ee1e7d003078c748e17a3998448eb68dcb67dedfbdb5b9f5c4c5a68ff65b942"
+    },
+    {
+      "relative_path": "DLPFC/151670/151670_truth.txt",
+      "sha256": "41582178b6dbd833d49bb3993a52e7b3dc948870047be171bce77c0d5aa47b3f"
+    },
+    {
+      "relative_path": "DLPFC/151671/151671_truth.txt",
+      "sha256": "1ebabbc5f8d29c9b9a5f92d5e1712cb1ac569811fd92d8575ec0ba6a68daa4b9"
+    },
+    {
+      "relative_path": "DLPFC/151672/151672_truth.txt",
+      "sha256": "30f2b845bc6cbe89196b86aef72fedf0af1d008140a9be11f01e6de2463fb664"
+    },
+    {
+      "relative_path": "DLPFC/151673/151673_truth.txt",
+      "sha256": "22a23c25425cec6c9bc5cbf0e7088d6805a4a756418e01da32698cc4011738c2"
+    },
+    {
+      "relative_path": "DLPFC/151674/151674_truth.txt",
+      "sha256": "23dc5317b2c2704037f2d165a67adc209712f1539694b0805323949c374e18ec"
+    },
+    {
+      "relative_path": "DLPFC/151675/151675_truth.txt",
+      "sha256": "fa88ac65e94dcfc4a9c782daf21cb2227c49188c6fed17fd2bfc2a65a69830f0"
+    },
+    {
+      "relative_path": "DLPFC/151676/151676_truth.txt",
+      "sha256": "492eef2000076559297c62594f32c65a8a06f51ef9add46270b6a5c9f03fbc3f"
+    },
+    {
+      "relative_path": "hest_data/tissue_dict_cancer.json",
+      "sha256": "f8ee7c6bd5f73c47927debb883b2f8abb1b724e1b8063be5eb974b76ade74560"
+    },
+    {
+      "relative_path": "hest_data/tissue_dict_healthy.json",
+      "sha256": "f5b9928dcddf412b007bed265e7c72704d0ea803b36d38f3c315aecf094ca748"
+    },
+    {
+      "relative_path": "hest_data/vocabulary_3k.json",
+      "sha256": "281b5d28ee7034bfd3df77edfaf9478706b656f098382bce74998d6033820c81"
+    },
+    {
+      "relative_path": "hest_data/vocabulary_cancer_3k.json",
+      "sha256": "93e145992f09c83c37756f4ae30a539161bfd93cdeb70a1582904a8e00f6e7fe"
+    },
+    {
+      "relative_path": "hest_data/vocabulary_healthy_3k.json",
+      "sha256": "147c36dc65c8f173d8cd46e2e09103323b42aaee7e0c9efa681d6bfa03c75fcc"
+    },
+    {
+      "relative_path": "scBERT/attn_sum_save.py",
+      "sha256": "c3bf77981567ca012af0ac7e62390b20f5a982c9dfcb59b01f758131d62886a7"
+    },
+    {
+      "relative_path": "scBERT/finetune.py",
+      "sha256": "0cc3949c82660db6d415bbfd5147acbca37c59a270fa151ace3a642f06c55e7b"
+    },
+    {
+      "relative_path": "scBERT/LICENSE",
+      "sha256": "2a1cd1c518b360c3589b697ad3e7b091075d86c1386f205f9d48fd2c99fe78a1"
+    },
+    {
+      "relative_path": "scBERT/lr_baseline_crossorgan.py",
+      "sha256": "bcdea719fe6ada7d53a82a644728eb9ac73d1a0d74a64feb1871df9ad59c12df"
+    },
+    {
+      "relative_path": "scBERT/predict.py",
+      "sha256": "ada38aa52090a4fa775205b1e905805e4dd62d0a12a5ed7991eafb010998fe08"
+    },
+    {
+      "relative_path": "scBERT/preprocess.py",
+      "sha256": "5a0919d814c24af09f17a4aa12a3bc36252a176ad2b4a50e70213fa698f549a5"
+    },
+    {
+      "relative_path": "scBERT/pretrain.py",
+      "sha256": "2be0800a04eb92794aab62a0a0e6c544ff942dfc5ea2ad428c331d5cc0eb41ec"
+    },
+    {
+      "relative_path": "scBERT/README.md",
+      "sha256": "c6ceec232c81ee7f02eae17513f77e69b9e3029a77d30b56c36f64bf9db39969"
+    },
+    {
+      "relative_path": "scBERT/requirements.txt",
+      "sha256": "1c15021a9ed68e17da00d22840e04ce18e27406ce706855b58718477caa44eed"
+    },
+    {
+      "relative_path": "scBERT/utils.py",
+      "sha256": "996f13c4d18a8d240b4ca2148b7ebe0f096f0082a844f725710ce9c560a41d90"
+    },
+    {
+      "relative_path": "scBERT/performer_pytorch/performer_pytorch.py",
+      "sha256": "7d946c7d794a62830984eddf70331ff295ee5eeeafa849e5590ffaa8cdb0f4b5"
+    },
+    {
+      "relative_path": "scBERT/performer_pytorch/reversible.py",
+      "sha256": "84726482e83a63328bbf02c9bb0cdfd51ec8c1b7870c4369b2136e3d2ac7ccb7"
+    },
+    {
+      "relative_path": "scBERT/performer_pytorch/__init__.py",
+      "sha256": "71b739f50ef8073d3b6ed58d192e6a230bb4f796e1219308aa3d906a3494cc67"
     }
-  ],
-  "comparison_document": {
-    "path": "CHANGES_FROM_INITIAL.md",
-    "baseline_commit": "d2d076f0f2aa5195df926bbf916b83976a22d529",
-    "scope": "Categorized Chinese comparison against the initial public snapshot, including behavior changes and compatibility. Documentation update only; executable source unchanged.",
-    "file_counts": {
-      "initial": 46,
-      "current_including_comparison_document": 28,
-      "new_paths": 15,
-      "modified_same_paths": 12,
-      "identical_same_paths": 1,
-      "initial_paths_not_included": 33
-    }
-  }
+  ]
 }

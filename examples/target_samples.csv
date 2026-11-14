@@ -1,2 +1,0 @@
-sample,tissue,h5ad,patches
-TARGET_01,Brain,../data/raw/TARGET_01.h5ad,../data/patches/TARGET_01.h5

@@ -1,3 +1,0 @@
-sample,tissue,h5ad,patches
-TRAIN_01,Brain,../data/raw/TRAIN_01.h5ad,../data/patches/TRAIN_01.h5
-TRAIN_02,Kidney,../data/raw/TRAIN_02.h5ad,../data/patches/TRAIN_02.h5

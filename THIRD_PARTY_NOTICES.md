@@ -1,3 +1,7 @@
+# Current original-logic release
+
+The original scBERT dependency tree and its LICENSE are restored. The notice below records the earlier reorganized release and is retained as historical attribution.
+
 # Third-party notices
 
 The SpatialTIP source release retains the Apache License 2.0 in [LICENSE](LICENSE). The following adapted components retain their upstream attribution. External model weights are not included in this source release.

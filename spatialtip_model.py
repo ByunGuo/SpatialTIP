@@ -14,13 +14,10 @@ from utils import is_dist_avail_and_initialized
 
 
 class SpatialTIPModel(SpatialTIPBase):
-    def __init__(self, vision_model="vit_large_patch16_224", img_size=224, patch_size=16,
-                 hidden_size=512, vocab_size=20938, max_seq_len=6001, tissue_type=5,
-                 vision_checkpoint=None, num_hidden_layers=6, num_attention_heads=8,
-                 intermediate_size=1024, attention_backend="auto"):
+    def __init__(self, vision_model, img_size=224, patch_size=16, hidden_size=512):
         super().__init__()
 
-        self.vision_encoder = self.init_vision_encoder(vision_model, img_size, patch_size, vision_checkpoint=vision_checkpoint)
+        self.vision_encoder = self.init_vision_encoder(vision_model, img_size, patch_size)
         for param in self.vision_encoder.patch_embed.parameters():
             param.requires_grad = False
         
@@ -42,12 +39,7 @@ class SpatialTIPModel(SpatialTIPBase):
         for param in self.vision_encoder.head.parameters():
             param.requires_grad = False    
        
-        self.stGPT = self.init_stGPT(
-            vocab_size=vocab_size, max_seq_len=max_seq_len, tissue_type=tissue_type,
-            hidden_size=hidden_size, num_hidden_layers=num_hidden_layers,
-            num_attention_heads=num_attention_heads, intermediate_size=intermediate_size,
-            attention_backend=attention_backend,
-        )
+        self.spatialtip = self.init_spatialtip()
 
         self.vision_proj = nn.Linear(self.vision_encoder.num_features, hidden_size)
         self.vision_norm = nn.LayerNorm(hidden_size)
@@ -57,7 +49,7 @@ class SpatialTIPModel(SpatialTIPBase):
     def forward(self, sample, neighbors=None, mode='train', method='reconstruction', pooling='cls', output_cls=False, output_attentions=False):
         img = sample['image']  
         gene_exp = sample['gene_exp']  # [batch_size, seq_length]
-        labels = sample.get('labels')  # Only required when computing training loss.
+        labels = sample['labels']  # [batch_size, seq_length]
         barcode = sample['barcode']  # [batch_size, 1]
         gene_id = sample['gene_id']  # [batch_size, seq_length + 1]
         batch_id = sample['tissue']  # [batch_size, 1]
@@ -69,7 +61,7 @@ class SpatialTIPModel(SpatialTIPBase):
         batch_size, seq_length = gene_id.shape
         _, image_seq_length, _ = image_embeds.shape
 
-        attention_mask = (gene_exp == -1).long()  # mask位置为1，其他位置为0
+        attention_mask = (gene_exp == -1).long()  # mask positions are 1, others are 0
         attention_mask = torch.cat([torch.zeros(batch_size, 1, device=gene_exp.device, dtype=torch.long), attention_mask], dim=1)  # [batch_size, seq_length]
         attention_mask = torch.zeros_like(attention_mask, dtype=torch.long, device=attention_mask.device) # comment this line to use masked attention
 
@@ -78,7 +70,7 @@ class SpatialTIPModel(SpatialTIPBase):
             image_cls_embeds = F.normalize(image_embeds[:, 0, :], dim=-1) # [batch_size, hidden_size]
             image_embeds_all = concat_all_gather(image_cls_embeds) # [world_size * batch_size, hidden_size]
             
-            gene_output = self.stGPT.bert(
+            gene_output = self.spatialtip.bert(
                 input_ids = gene_id,
                 gene_exp=gene_exp,
                 attention_mask=attention_mask,
@@ -101,7 +93,7 @@ class SpatialTIPModel(SpatialTIPBase):
             logits = logit_scale * spot_embeddings_all @ image_embeds_all.t()  # [world_size * batch_size, world_size * batch_size]
             total_samples = spot_embeddings_all.size(0)
 
-            rank = dist.get_rank() if is_dist_avail_and_initialized() else 0
+            rank = dist.get_rank()
 
             if neighbors is None:
                 logits_per_image = logit_scale * image_cls_embeds @ spot_embeddings_all.t() # [batch_size, world_size * batch_size]
@@ -140,7 +132,7 @@ class SpatialTIPModel(SpatialTIPBase):
         
         cross_atts_mask = torch.ones(batch_size, seq_length, image_seq_length, device=gene_exp.device, dtype=torch.float32)  # [batch_size, gene_length, image_seq_length]
 
-        lm_output = self.stGPT(
+        lm_output = self.spatialtip(
             input_ids=gene_id,
             gene_exp=gene_exp,
             attention_mask=attention_mask,

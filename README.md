@@ -1,266 +1,354 @@
-# SpatialTIP
+# SpatialTIP: a multimodal pretrained framework for imputing missing values in spatial transcritomics
 
-SpatialTIP combines paired histology patches and gene-expression tokens for spatial transcriptomics imputation. This source release provides the core data preparation, pretraining, target fine-tuning, inference, recovery evaluation, spatial clustering, and attention-association export workflows.
+## Table of Contents
 
-This is a standalone cleanup of the current research implementation, compared with the [initial public repository](https://github.com/Yoyiming/SpatialTIP/tree/d2d076f0f2aa5195df926bbf916b83976a22d529). Supplementary experiment runners, baseline implementations, ablations, sensitivity sweeps, plotting scripts, temporary scripts, manuscripts, logs, and generated results are excluded.
+- [Overview](#overview)
+- [Installation](#installation)
+- [Data Preparation](#data-preparation)
+- [Model Architecture](#model-architecture)
+- [Usage](#usage)
+  - [Pretraining](#1-pretraining)
+  - [Fine-tuning](#2-fine-tuning)
+  - [Gene Imputation](#3-gene-imputation)
+  - [Spatial Clustering](#4-spatial-clustering)
+- [Project Structure](#project-structure)
+- [Citation](#citation)
 
-A categorized comparison with the initial release, including behavior changes and compatibility notes, is available in [CHANGES_FROM_INITIAL.md](CHANGES_FROM_INITIAL.md) (Chinese).
+## Overview
+
+SpatialTIP leverages a ViT-L vision encoder (UNI pretrained) cross-attended to a BERT-style gene expression decoder. 
+
+### Key Features
+
+- 🔬 **Gene Imputation**: Predict missing/unexpressed gene values
+- 🗺️ **Spatial Clustering**: Identify spatial domains from imputed expression
+- 🖼️ **Vision-Gene Integration**: Combines histology images with transcriptomics
 
 ## Installation
 
-Linux with an NVIDIA GPU is recommended for full-size training. The configuration uses UNI ViT-L and a six-layer gene decoder; complete training requires substantial GPU memory. The explicit CPU attention path supports small checks, but is not a practical recommendation for full-size training.
+### Requirements
 
-Create an isolated Python environment from the repository root:
+- Python 3.9
+- CUDA 11.8
+- R with mclust package (for clustering)
+
+### Setup
 
 ```bash
+# Create conda environment
 conda env create -f environment.yml
 conda activate spatialtip
+
+# Set R environment variables (Linux)
+export R_HOME=/root/miniconda3/envs/spatialtip/lib/R
+export R_USER=/root/miniconda3/envs/spatialtip/lib/python3.9/site-packages/rpy2
 ```
 
-Install one matching PyTorch/torchvision pair, then the remaining dependencies. For CUDA 11.8:
+### Download Pretrained Weights
+
+Download the UNI ViT-L pretrained weights and place them at:
+```
+uni/checkpoints/pytorch_model.bin
+```
+
+## Data Preparation
+
+### Data Format
+
+SpatialTIP expects the following data structure:
+
+```
+hest_data/
+├── st/                          # Raw spatial transcriptomics data (.h5ad)
+│   ├── MISC1.h5ad
+│   ├── MISC2.h5ad
+│   └── ...
+├── patches/                     # Image patches (.h5)
+│   ├── MISC1.h5
+│   ├── MISC2.h5
+│   └── ...
+├── vocabulary_healthy_3k.json  # Gene vocabulary
+└── tissue_dict.json             # Tissue type mapping
+```
+
+### Data Processing Pipeline
+
+**Step 1: Download HEST Dataset** (Optional)
 
 ```bash
-python -m pip install torch==2.4.1 torchvision==0.19.1 --index-url https://download.pytorch.org/whl/cu118
-python -m pip install -r requirements.txt
+python hest_download.py
 ```
 
-For CPU checks, replace the first command's index URL with `https://download.pytorch.org/whl/cpu`. These wheel pairs follow the [official PyTorch installation table](https://pytorch.org/get-started/previous-versions/). The Conda file intentionally does not contain machine-specific build strings or an absolute environment prefix.
+**Step 2: Preprocess Data**
 
-FlashAttention is optional. With a compatible Linux/CUDA installation, `flash-attn==2.6.3` can be installed separately. `attention_backend: "auto"` uses it for compatible CUDA half-precision tensors when available, otherwise PyTorch scaled-dot-product attention. Attention-logit extraction explicitly computes attention scores. `"flash"` requires the compatible extension; `"sdpa"` or `"math"` selects the other paths explicitly. Backend changes may produce small numerical differences.
+This step:
+1. Selects highly variable genes (HVGs) across samples
+2. Creates gene vocabulary (`vocabulary_*.json`)
+3. Creates tissue type mapping (`tissue_dict*.json`)
+4. Filters and normalizes expression data
 
-Spatial clustering also requires `Rscript` on `PATH` and R's `mclust` package:
+## Model Architecture
 
-```r
-install.packages("mclust")
-```
+### Components
 
-No local R installation paths are set by the Python code. Use `clustering.py --rscript /path/to/Rscript` if necessary. Other workflows do not require R or rpy2.
+| Component | File | Description |
+|-----------|------|-------------|
+| Core BERT | `spatialtip.py` | BERT-style encoder-decoder with cross-attention |
+| Model Wrapper | `spatialtip_model.py` | Combines vision encoder with gene decoder |
+| Initialization | `spatialtip_init.py` | Model initialization utilities |
+| Dataset | `dataset.py` | Data loading utilities |
 
-## Required resources
 
-Datasets and model weights are not bundled. Obtain UNI weights under the provider's applicable access and license terms. New pretraining requires `--vision-checkpoint /path/to/UNI/pytorch_model.bin`. A complete SpatialTIP checkpoint already contains its vision encoder, so inference/fine-tuning requires only that complete checkpoint.
+### Configuration Parameters
 
-A legacy SpatialTIP checkpoint must be used with **its exact original gene-to-ID vocabulary and tissue-to-ID mapping**. Matching gene counts does not prove ID compatibility. This cleanup does not replace missing current vocabularies with the old public repository's JSON files, and does not provide a new weight download URL. Record IDs and mappings alongside your checkpoints. New checkpoints store the vocabulary file's SHA256 and architecture configuration; the loader checks them.
+**Important:** Model configuration in `spatialtip_init.py` depends on the training dataset. Key parameters that vary:
 
-`configs/model.example.json` contains the current healthy-model architecture defaults, including 20,938 token IDs and five tissue IDs. It is an editable example, not a declaration that an arbitrary checkpoint matches. Set `vocab_size` to the vocabulary length including `CLS=0`, `tissue_type` to the tissue mapping length, and `max_seq_len` to the intended gene-panel length plus one. Use the appropriate configuration and mappings for a disease model. Changing vocabulary IDs is incompatible with an existing checkpoint even if strict tensor loading succeeds.
+| Parameter | Description | Varies By |
+|-----------|-------------|-----------|
+| `vocab_size` | Gene vocabulary size | Number of HVGs in dataset |
+| `tissue_type` | Number of tissue types | Tissue categories in dataset |
+| `max_seq_len` | Maximum sequence length | Training stage (see below) |
 
-Processed expression H5AD files must have:
+**Sequence Length Configuration:**
+- **Pretraining**: `max_seq_len = 3001` (shorter for efficiency across multiple samples)
+- **Fine-tuning**: `max_seq_len = 6001` (longer for sample-specific genes)
 
-- Unique spot and gene identifiers; all genes present in the supplied vocabulary.
-- Finite, nonnegative normalized/log-transformed expression in `X`.
-- Integer `obs['tissue']` IDs from the checkpoint's tissue mapping.
-- `obsm['spatial']` coordinates for spatial clustering or spatial recovery evaluation.
+When using a different dataset, update these values in `spatialtip_init.py` accordingly.
 
-Patch HDF5 files must contain `img` with shape `(N, H, W, 3)` and dtype `uint8`, and a `barcode` dataset. Patches are matched by barcode, not by row position. Default input patches are 224 × 224 RGB; `--resize-images` explicitly permits bilinear resizing. Dataset image handles are opened independently in each loader worker.
+## Usage
 
-## Data preparation
+### 1. Pretraining
 
-Optional, explicitly selected HEST downloads:
+Train on multiple samples for general representation learning:
 
 ```bash
-python hest_download.py --local-dir data/hest --sample-id MISC1
+torchrun --nproc_per_node=4 train.py \
+    --batch_size 32 \
+    --epochs 80 \
+    --learning_rate 1e-4 \
+    --mask_prob 0.15 \
+    --world_size 4 \
+    --save_dir spatialtip_model
 ```
 
-Use Hugging Face's normal user authentication or environment configuration when access requires it. The downloader contains no embedded credentials, does not log in on import, and requires `--all` for a full-dataset download.
+**Key Arguments:**
+| Argument | Default | Description |
+|----------|---------|-------------|
+| `--batch_size` | 32 | Batch size per GPU |
+| `--epochs` | 80 | Number of training epochs |
+| `--learning_rate` | 1e-4 | Learning rate |
+| `--mask_prob` | 0.15 | Probability of masking non-zero genes |
+| `--world_size` | 4 | Number of GPUs |
+| `--save_dir` | spatialtip_model | Model save directory |
 
-The example CSV manifests contain illustrative paths and sample identifiers; edit them for your data. Required columns are `sample,tissue,h5ad,patches`. Relative paths resolve against the CSV's directory. They are not the paper's historical training/test split.
+### 2. Fine-tuning
 
-For a **new model**, fit new deterministic gene and tissue mappings using only the samples you explicitly select:
+There are two fine-tuning modes depending on your goal:
+
+#### Standard Fine-tuning (`finetune.py`)
+
+Fine-tune on **original unmasked data** for general adaptation to a specific sample:
 
 ```bash
-python preprocess.py fit \
-  --manifest examples/train_samples.csv \
-  --output-dir data/pretraining \
-  --vocabulary resources/vocabulary.json \
-  --tissue-map resources/tissue_map.json \
-  --n-top-genes 3000
+torchrun --nproc_per_node=4 finetune.py \
+    --finetune_sample MISC1 \
+    --epochs 60 \
+    --train_mask_prob 0.6 \
+    --batch_size 32
 ```
 
-The pipeline selects Seurat-v3 HVGs on raw counts, normalizes total counts using Scanpy's default target, applies `log1p`, retains selected genes and spots with paired image patches, and writes numeric tissue IDs. New vocabulary IDs use a stable gene ordering. This deliberately does not reproduce the nondeterministic IDs of older set-based vocabulary generation.
+#### Masked Fine-tuning (`finetune_masked.py`)
 
-Prepare a target using the frozen mappings:
+Fine-tune on **artificially masked data** for imputation evaluation. This mode:
+1. Randomly masks a portion of expressed genes (specified by `--test_mask_prob`)
+2. Saves the mask for later evaluation
+3. Trains the model to predict masked values
 
 ```bash
-python preprocess.py transform \
-  --manifest examples/target_samples.csv \
-  --output-dir data/target \
-  --vocabulary resources/vocabulary.json \
-  --tissue-map resources/tissue_map.json \
-  --n-top-genes 6000
+torchrun --nproc_per_node=4 finetune_masked.py \
+    --finetune_sample MISC1 \
+    --test_mask_prob 0.2 \
+    --epochs 30
 ```
 
-Target HVG candidates are restricted to the frozen vocabulary; library-size normalization still uses the full original count matrix before the selected genes are retained. The output may contain fewer than the requested number of genes if the intersection is smaller. No vocabulary IDs are added or reordered during `transform`. The prepared `manifest.csv` records the actual output paths and dimensions.
+| Mode | Script | Data | Use Case |
+|------|--------|------|----------|
+| Standard | `finetune.py` | Original data | General adaptation |
+| Masked | `finetune_masked.py` | Artificially masked data | Imputation evaluation |
 
-For historical checkpoints, prefer the original processed H5AD panels and original mappings. Reprocessing current raw data is not proof that a historical gene panel, normalization, or result has been reproduced. Preprocessing refuses to overwrite inputs and requires explicit `--overwrite` to replace generated outputs.
+### 3. Gene Imputation
 
-## Pretraining and fine-tuning
+#### General Imputation (`impute.py`)
 
-Update the example model configuration to match the fitted mappings before training:
-
-```bash
-python train.py \
-  --manifest data/pretraining/manifest.csv \
-  --config configs/model.example.json \
-  --vocabulary resources/vocabulary.json \
-  --vision-checkpoint checkpoints/UNI/pytorch_model.bin \
-  --output-dir runs/pretrain \
-  --epochs 80 --batch-size 32 --mask-prob 0.15
-```
-
-For multiple GPUs, replace `python train.py` with `torchrun --standalone --nproc_per_node=4 train.py`. The single-process command also works without distributed initialization. Different sections are loaded separately so a batch never mixes incompatible gene panels. The default spot split is 90/10 for pretraining and 80/20 for target fine-tuning (`--train-fraction`); this is an internal optimization split, not an independent-donor validation claim. DDP samplers may pad subsets with repeated spots to keep rank batch sizes equal; the run metadata records this.
-
-Fine-tune a complete SpatialTIP checkpoint on one processed target:
-
-```bash
-python finetune.py \
-  --expression data/target/TARGET_01.h5ad \
-  --patches data/patches/TARGET_01.h5 \
-  --config configs/model.example.json \
-  --vocabulary resources/vocabulary.json \
-  --checkpoint runs/pretrain/best.pt \
-  --output-dir runs/target \
-  --epochs 60 --batch-size 32 --mask-prob 0.6
-```
-
-Training samples observed zeros/nonzeros separately for MLM (default probabilities 0.05 and 0.15 for pretraining, with 0.6 for fine-tuning nonzeros). The mask token is `-1`. Reconstruction preserves the original MSE reduction over the complete batch × gene matrix after unselected entries are zeroed, rather than dividing only by the number of selected entries. The CLS-based bidirectional contrastive loss retains coefficient 0.5 and the original cross-rank gather convention. The first 18 UNI transformer blocks remain frozen; the final six blocks are trainable.
-
-Training retains linear warmup and periodic cosine restarts: defaults are cycle length 40 epochs and warmup 5 for pretraining, cycle length 30 and warmup 2 for fine-tuning, minimum learning rate 0.00005, and peak decay 0.98 per cycle. These are explicit arguments. The independently expressed schedule does not import the scBERT scheduler. This release uses a shared trainer, valid single-process/DDP handling, complete batches and evaluation without gradient tracking. It does **not** claim bitwise reproduction of every historical batch-dropping, stochastic validation or stopping decision. The default patience is 10; `--patience 0` disables early stopping. A supplied SpatialTIP checkpoint initializes model weights; optimizer/scheduler state is not resumed. `best.pt`, `last.pt`, `training.csv`, and `run.json` are written only to a new or empty output directory.
-
-## Imputation
+Predict expression for **unexpressed genes** (genes with zero counts). This masks all non-zero values and asks the model to predict what the zero values should be. Works with any model weights (pretrained or fine-tuned):
 
 ```bash
 python impute.py \
-  --expression data/target/TARGET_01.h5ad \
-  --patches data/patches/TARGET_01.h5 \
-  --config configs/model.example.json \
-  --vocabulary resources/vocabulary.json \
-  --checkpoint runs/target/best.pt \
-  --output outputs/TARGET_01_prediction.h5ad \
-  --device cuda:0 --batch-size 1
+    --test_sample MISC1 \
+    --model_dir spatialtip_model \
+    --model_name spatialtip_hest_healthy_3k.pt
 ```
 
-The default `--input-mask zeros` converts zero input entries to `-1` and retains observed nonzero expression as context. `--input-mask observed` reproduces the older top-level imputation script's different condition of hiding nonzeros; `none` leaves the input unchanged. These conditions should not be mixed in comparisons. The output contains dense model predictions for **all** input spots and genes in their original order, without a CLS column, observed-value replacement, or spatial smoothing. The default batch size prioritizes memory use; adjust it for your hardware.
+**Output:** `{output_dir}/{sample}_imputed.h5ad`
 
-The loader accepts legacy bare state dictionaries with leading `module.` prefixes and the original public `spatialtip.*` decoder prefix, normalizing those to the retained internal `stGPT.*` keys. Tensor loading is strict; incompatible keys/shapes are errors. New release checkpoints additionally validate the vocabulary SHA256 and architecture metadata. Legacy weight files lack that binding, so the original vocabulary remains the user's responsibility.
+| Argument | Default | Description |
+|----------|---------|-------------|
+| `--test_sample` | MISC1 | Sample to impute |
+| `--model_dir` | spatialtip_model | Model directory |
+| `--model_name` | spatialtip_hest_healthy_3k.pt | Model filename |
+| `--data_dir` | hest_data | Data directory |
+| `--data_subdir` | st_healthy_6k_v1 | Data subdirectory |
+| `--patches_dir` | hest_data/patches | Patches directory |
+| `--vocabulary_path` | hest_data/vocabulary_healthy_3k.json | Vocabulary file |
+| `--output_dir` | Result/st_healthy_6k | Output directory |
+| `--device` | cuda:0 | Device to use |
+| `--batch_size` | 64 | Batch size |
 
-## Held-out recovery evaluation
+#### Masked Imputation (`impute_masked.py`)
 
-Uniform held-out evaluation is separate from training-time MLM. To prepare it:
+Evaluate imputation accuracy on **artificially masked data**. This uses data where some expressed genes were masked out, and compares predictions against ground truth. Requires fine-tuned model on the masked data:
 
 ```bash
-python mask_expression.py \
-  --truth data/target/TARGET_01.h5ad \
-  --output data/masked/TARGET_01.h5ad \
-  --heldout data/masked/TARGET_01_heldout.npz \
-  --probability 0.2 --seed 2024
+python impute_masked.py \
+    --test_sample MISC1 \
+    --test_mask_prob 0.2 \
+    --model_dir spatialtip_model
 ```
 
-The sparse boolean NPZ uses **True = held out** in the original H5AD axis order. Start from a pretraining checkpoint that has not been adapted on the unmasked target. In particular, do not reuse `runs/target/best.pt` from the unmasked fine-tuning example above. Fine-tune and predict in separate masked-data output directories:
+**Output:** `{output_dir}/{sample}_{mask_prob}.h5ad`
 
-```bash
-python finetune.py \
-  --expression data/masked/TARGET_01.h5ad \
-  --patches data/patches/TARGET_01.h5 \
-  --heldout data/masked/TARGET_01_heldout.npz \
-  --config configs/model.example.json \
-  --vocabulary resources/vocabulary.json \
-  --checkpoint runs/pretrain/best.pt \
-  --output-dir runs/target_masked
+| Argument | Default | Description |
+|----------|---------|-------------|
+| `--test_sample` | MISC2 | Sample to evaluate |
+| `--test_mask_prob` | 1.0 | Masking probability used in data |
+| `--model_dir` | spatialtip_model | Model directory |
+| `--model_name` | spatialtip_hest_healthy_{sample}_finetune.pt | Model filename (auto-set if not specified) |
+| `--data_dir` | hest_data | Data directory |
+| `--masked_data_subdir` | st_healthy_6k_masked_{seed} | Masked data subdirectory |
+| `--original_data_subdir` | st_healthy_6k_v1 | Original data subdirectory |
+| `--masks_dir` | hest_data/masks_healthy_6k_{seed} | Masks directory |
+| `--output_dir` | Result/predicted_healthy_6k_masked_{seed} | Output directory |
+| `--device` | cuda:0 | Device to use |
+| `--batch_size` | 32 | Batch size |
 
-python impute.py \
-  --expression data/masked/TARGET_01.h5ad \
-  --patches data/patches/TARGET_01.h5 \
-  --config configs/model.example.json \
-  --vocabulary resources/vocabulary.json \
-  --checkpoint runs/target_masked/best.pt \
-  --output outputs/TARGET_01_masked_prediction.h5ad \
-  --device cuda:0
-```
+| Script | Input Data | Use Case |
+|--------|------------|----------|
+| `impute.py` | Original data | General imputation of unexpressed genes |
+| `impute_masked.py` | Pre-masked data | Evaluate imputation accuracy with ground truth |
 
-Held-out entries remain unknown inputs and are excluded from the training loss. Evaluate the masked-input prediction against the original processed truth:
+### 4. Spatial Clustering
+
+Perform spatial domain identification using the imputed gene expression. See `spatial_domain_clustering.ipynb` for a step-by-step tutorial.
+
+**Key Steps:**
+1. Load original and imputed data
+2. Combine imputed values with original non-zero values
+3. Apply spatial neighbor smoothing
+4. Dimensionality reduction with PCA
+5. Clustering with mclust (GMM-based)
+6. Optional label refinement
+
+**Input Files:**
+- Original adata: `hest_data/st/{sample}.h5ad`
+- Imputed adata: `Results/{sample}/spatialtip_imputed.h5ad`
+
+**Output:**
+- Clustering visualization: `figures/clustering/{sample}/clustering_result.png`
+- Clustered adata: `Results/{sample}/spatialtip_clustered.h5ad`
+
+### Evaluation Metrics
+
+Calculate evaluation metrics for imputation results:
 
 ```bash
 python evaluate.py \
-  --truth data/target/TARGET_01.h5ad \
-  --imputed outputs/TARGET_01_masked_prediction.h5ad \
-  --heldout data/masked/TARGET_01_heldout.npz \
-  --output outputs/TARGET_01_metrics.csv
+    --sample MISC1 \
+    --mask_prob 0.2
 ```
 
-Use a prediction produced from the masked input, not a prediction from the unmasked target. RMSE/MAE pool only the held-out entries. Spot-wise/gene-wise PCC and cosine similarity average valid vectors, with valid-vector counts retained. Undefined values remain missing. To additionally evaluate observed-value completion and historical sequential spatial smoothing, supply `--input data/masked/TARGET_01.h5ad --smoothing radius --radius 150`; the output CSV labels each stage separately. No supplementary expression-dependent masking, proxy-label or baseline experiment runners are included.
+**Output:** `{output_dir}/{sample}_{mask_prob}_evaluation_metrics.csv`
 
-## Spatial clustering
+**Metrics:**
+- RMSE / MAE
+- Spot-wise Pearson Correlation Coefficient (PCC)
+- Spot-wise Cosine Similarity
+- Gene-wise PCC
+- Gene-wise Cosine Similarity
 
-```bash
-python clustering.py \
-  --original data/target/TARGET_01.h5ad \
-  --imputed outputs/TARGET_01_prediction.h5ad \
-  --output outputs/TARGET_01_clustered.h5ad \
-  --n-clusters 7 --pca-components 20 \
-  --smoothing radius --radius 150 --refine-neighbors 30
+| Argument | Default | Description |
+|----------|---------|-------------|
+| `--sample` | MISC3 | Sample name |
+| `--mask_prob` | 0.2 | Mask probability |
+| `--seed` | 2024 | Random seed |
+| `--data_dir` | hest_data | Data directory |
+| `--masked_data_subdir` | st_healthy_6k_masked_{seed} | Masked data subdirectory |
+| `--original_data_subdir` | st_healthy_6k_v1 | Original data subdirectory |
+| `--imputed_data_dir` | Result/predicted_healthy_6k_masked_{seed} | Imputed data directory |
+| `--masks_dir` | hest_data/masks_healthy_6k_{seed} | Masks directory |
+| `--output_dir` | Metrices/healthy_6k_{seed} | Output directory |
+| `--no_spatial_smoothing` | False | Disable spatial neighbor smoothing |
+| `--rad_cutoff` | 150 | Radius cutoff for spatial network |
+
+## Project Structure
+
 ```
-
-This entry point retains original nonzero expression, fills original zeros with predictions, applies the historical **sequential** spatial mean including the center spot, runs PCA and mclust EEE, then applies simultaneous nearest-neighbor label refinement. Radius is measured in the units of `obsm['spatial']`; choose a suitable setting for a different platform. Sequential smoothing reads previously updated rows and therefore depends on spot order. It is not the synchronous kNN mean used by some sensitivity scripts. Those supplementary scripts are excluded.
-
-`--smoothing none` disables expression smoothing; `--refine-neighbors 0` disables label refinement. For a matrix already containing the intended completed/smoothed output, `--already-integrated` bypasses both the observed-value merge and expression smoothing, avoiding duplicate processing. Refinement vote ties follow the first label in the ordered nearest-neighbor list; exact distance ties are ordered by spot index for deterministic behavior in this release. This tie handling is not a promise of bitwise reproduction of historical distance-library behavior.
-
-`--n-clusters` is explicit and is never inferred from reference annotations. Reference labels are optional: use `--label-key ground_truth` only when that column exists and reference ARI/NMI is desired. A dataset without domain ground truth can still be clustered, but reference-label agreement metrics are unavailable. The output records the matrix, PCA coordinates, initial/refined labels, and processing parameters.
-
-## Attention-derived associations
-
-```bash
-python output_attentions.py \
-  --expression data/target/TARGET_01.h5ad \
-  --patches data/patches/TARGET_01.h5 \
-  --config configs/model.example.json \
-  --vocabulary resources/vocabulary.json \
-  --checkpoint runs/target/best.pt \
-  --output outputs/TARGET_01_attention.npz --device cuda:0
-
-python attention_network.py \
-  --attention outputs/TARGET_01_attention.npz \
-  --output outputs/TARGET_01_associations.csv --top-k 20
-```
-
-The extractor averages returned gene self-attention **pre-softmax logits** over heads, layers and all input spots, excluding CLS. Rows are query genes and columns are key genes; scores include the additive constants of the explicit attention mask. These are model-internal associations, not normalized probabilities or evidence of causal regulation. `--max-spots` explicitly selects a leading subset and records its size; the default processes all spots. Gene × gene attention extraction can use substantial memory. `attention_network.py --query GENE_A GENE_B` optionally ranks keys for selected query genes without altering the scores.
-
-## Source layout and release scope
-
-```text
 SpatialTIP/
-  spatialtip.py             # Gene decoder and auto-discretization embedding
-  spatialtip_init.py        # UNI/BERT architecture initialization
-  spatialtip_model.py       # Vision/gene model and training objectives
-  runtime.py                # Configuration and strict checkpoint loading
-  dataset.py                # Barcode-aligned H5AD/HDF5 dataset
-  utils.py                  # Tokenization, masking and distributed helpers
-  preprocess.py             # Explicit new/frozen vocabulary data preparation
-  hest_download.py          # Optional, explicit dataset download
-  train.py                  # Shared training engine and pretraining CLI
-  finetune.py               # Single-target fine-tuning CLI
-  impute.py                 # Dense prediction export
-  mask_expression.py        # Uniform nonzero holdout preparation
-  evaluate.py               # Held-out recovery metrics
-  clustering.py             # Completion/smoothing/PCA/mclust/refinement
-  output_attentions.py      # Gene self-attention logit extraction
-  attention_network.py      # Ranked query/key association export
-  configs/model.example.json
-  examples/                 # Illustrative CSV formats, no dataset payloads
-  environment.yml
-  requirements.txt
-  LICENSE
-  THIRD_PARTY_NOTICES.md
-  source_provenance.json
+├── spatialtip.py              # Core BERT architecture
+├── spatialtip_model.py        # Main model class
+├── spatialtip_init.py         # Model initialization
+├── dataset.py                 # Dataset classes
+├── utils.py                   # Utility functions
+│
+├── train.py                   # Pretraining script
+├── finetune.py                # Fine-tuning script
+├── finetune_masked.py          # Fine-tuning on masked data
+│
+├── impute.py                  # General imputation
+├── impute_masked.py           # Imputation on masked data
+├── evaluate.py                # Evaluation metrics
+├── spatial_domain_clustering.ipynb  # Spatial clustering tutorial
+│
+├── preprocess_hest_healthy_union.py  # Healthy data preprocessing
+├── preprocess_hest_cancer_union.py   # Cancer data preprocessing
+├── hest_download.py           # HEST dataset downloader
+│
+├── environment.yml            # Conda environment
+└── README.md                  # This file
 ```
 
-No entire `scBERT` or `scFoundation` distribution is bundled, and no unused loader or GPL scBERT scheduler is imported. Provenance and third-party attribution are retained in the listed files. Inputs, weights and generated outputs are ignored by Git by default.
+## Sample ID Mapping
 
-## Validation and limits
+DLPFC samples map to standard dataset IDs:
 
-The source was reorganized independently of the original research directory. Checks used an isolated Windows/Python 3.11 environment with the pinned CPU dependencies. They covered real Seurat-v3 preprocessing and H5AD/HDF5 data loading, the gene decoder's numerical agreement with the original explicit-attention implementation, synthetic checkpoint loading, single/two-process CPU training management, recovery metrics, and full clustering with R 4.4.2/mclust 6.1.1. Training-management fixtures use a small substitute model; decoder/wrapper checks use small tensors and a substitute vision encoder. Details are recorded in `source_provenance.json`.
+| Sample | Dataset ID | Sample | Dataset ID |
+|--------|-----------|--------|-----------|
+| MISC1 | 151676 | MISC7 | 151670 |
+| MISC2 | 151675 | MISC8 | 151669 |
+| MISC3 | 151674 | MISC9 | 151510 |
+| MISC4 | 151673 | MISC10 | 151509 |
+| MISC5 | 151672 | MISC11 | 151508 |
+| MISC6 | 151671 | MISC12 | 151507 |
 
-These checks establish code behavior and file contracts, not the scientific accuracy of a trained model. Full-size GPU training, multi-GPU execution, real-checkpoint restoration with the currently unavailable local resources, and paper-result reproduction are not established by these checks. No trained weights, historical evaluation datasets or current vocabulary/tissue mappings were exported as part of this code-only cleanup.
+## Dependencies
+
+| Package | Version |
+|---------|---------|
+| PyTorch | 2.4.0 |
+| CUDA | 11.8 |
+| flash-attn | 2.6.3 |
+| timm | 1.0.9 |
+| transformers | 4.44.2 |
+| scanpy | 1.10.2 |
+| anndata | 0.10.9 |
+| rpy2 | 3.5.11 |
 
 ## License
 
-SpatialTIP source is distributed under Apache-2.0. See `LICENSE` and `THIRD_PARTY_NOTICES.md` for incorporated code attribution. External datasets and UNI weights retain their own terms.
+This project is licensed under the Apache 2.0 License.
+
+
+## Archived analysis resources
+
+Processed datasets: https://doi.org/10.5281/zenodo.24190756
+
+Use each SpatialTIP checkpoint with its exact original gene-to-ID vocabulary and tissue mapping. The archived research checkpoints use the `stGPT.` decoder prefix; the loading statements in the four fine-tuning/inference entries translate it to the original public `spatialtip.` prefix. All model, training, masking, inference, evaluation and clustering logic follows the original public implementation.
