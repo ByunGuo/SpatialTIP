@@ -25,6 +25,7 @@ parser.add_argument('--output_dir', type=str, default=None, help='output directo
 # Spatial smoothing
 parser.add_argument('--no_spatial_smoothing', action='store_true', help='disable spatial neighbor smoothing')
 parser.add_argument('--rad_cutoff', type=float, default=150, help='radius cutoff for spatial network')
+parser.add_argument('--n_neighbors', type=int, default=None, help='KNN excluding self; overrides radius')
 
 
 def evaluate_metrics(true_exp_matrix, imputed_exp_matrix, mask, save_path):
@@ -77,21 +78,10 @@ def evaluate_metrics(true_exp_matrix, imputed_exp_matrix, mask, save_path):
     return evaluation_results
 
 
-def apply_spatial_smoothing(imputed_matrix, adata, rad_cutoff=150):
-    """Apply spatial neighbor smoothing to imputed matrix."""
-    spatial_net = Cal_Spatial_Net(adata, rad_cutoff=rad_cutoff, model='Radius')
-    neighbors = {}
-    for _, row in spatial_net.iterrows():
-        spot1, spot2 = row['Spot1'], row['Spot2']
-        neighbors.setdefault(spot1, set()).add(spot2)
-        neighbors.setdefault(spot2, set()).add(spot1)
-
-    smoothed_matrix = imputed_matrix.copy()
-    for spot, neighbor_spots in neighbors.items():
-        neighbor_spots = [int(spot) for spot in neighbor_spots]
-        smoothed_matrix[int(spot)] = smoothed_matrix[neighbor_spots].mean(axis=0)
-
-    return smoothed_matrix
+def apply_spatial_smoothing(imputed_matrix, adata, rad_cutoff=150, n_neighbors=None):
+    """One-pass average of self and undirected spatial neighbors."""
+    from spatial_smoothing import spatial_neighbors, average_pool
+    return average_pool(imputed_matrix, spatial_neighbors(adata.obsm['spatial'],rad_cutoff,n_neighbors))
 
 
 def main():
@@ -137,7 +127,7 @@ def main():
     # Apply spatial smoothing (enabled by default)
     if not args.no_spatial_smoothing:
         print('Applying spatial smoothing...')
-        imputed_matrix = apply_spatial_smoothing(imputed_matrix, adata_masked, args.rad_cutoff)
+        imputed_matrix = apply_spatial_smoothing(imputed_matrix, adata_masked, args.rad_cutoff, args.n_neighbors)
 
     # Evaluate metrics
     os.makedirs(output_dir, exist_ok=True)

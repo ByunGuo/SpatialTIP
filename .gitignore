@@ -42,7 +42,14 @@ Metrices/
 *.log
 
 # Research workspace material excluded from this source release
-experiments/
+experiments/*
+!experiments/e1/
+!experiments/e2/
+experiments/e1/*
+experiments/e2/*
+!experiments/e1/*.py
+!experiments/e1/*.R
+!experiments/e2/run_organ_entry.py
 baselines/
 baseline_extensions/
 ablation*/
